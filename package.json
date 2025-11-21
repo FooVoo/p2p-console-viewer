@@ -18,5 +18,8 @@
   "bugs": {
     "url": "https://github.com/FooVoo/p2p-console-viewer/issues"
   },
-  "homepage": "https://github.com/FooVoo/p2p-console-viewer#readme"
+  "homepage": "https://github.com/FooVoo/p2p-console-viewer#readme",
+  "devDependencies": {
+    "vite": "^7.2.4"
+  }
 }
