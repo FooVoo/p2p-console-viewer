@@ -1,4 +1,4 @@
-class WebSocketConnector {
+export class WebSocketConnector {
     constructor(url) {
         this.url = url;
         this.ws = null;
@@ -115,6 +115,3 @@ class WebSocketConnector {
         return this.ws && this.ws.readyState === WebSocket.OPEN;
     }
 }
-
-export default { WebSocketConnector };
-

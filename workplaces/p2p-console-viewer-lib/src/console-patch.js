@@ -1,4 +1,4 @@
-class ConsoleInterceptor {
+export class ConsoleInterceptor {
     constructor() {
         this.originalMethods = {};
         this.isPatched = false;
@@ -34,5 +34,3 @@ class ConsoleInterceptor {
         this.isPatched = false;
     }
 }
-
-export default { ConsoleInterceptor };

@@ -1,4 +1,4 @@
-class P2PSignalingClient {
+export class P2PSignalingClient {
     constructor(signalingServerUrl) {
         this.ws = new WebSocketConnector(signalingServerUrl);
         this.p2p = new P2PConnection();
@@ -103,5 +103,3 @@ class P2PSignalingClient {
         this.ws.disconnect();
     }
 }
-
-export default {P2PSignalingClient};

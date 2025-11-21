@@ -2,7 +2,7 @@
  * Simple WebRTC P2P Connection
  * Handles peer-to-peer connections with data channel for messaging
  */
-class P2PConnection {
+export class P2PConnection {
   constructor(config = {}) {
     // Default STUN servers for NAT traversal
     this.config = {
@@ -267,7 +267,3 @@ class P2PConnection {
     return stats;
   }
 }
-
-export default P2PConnection;
-export { P2PConnection };
-
