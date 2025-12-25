@@ -1,64 +1,63 @@
+// javascript
 import { P2PConnection } from "./p2p-connection.js";
 import { WebSocketConnector } from "./websocket-connector.js";
 
 /**
- * P2P signaling client that bridges a WebSocket-based signaling server and a local P2P connection.
+ * P2P signaling client that bridges a WebSocket-based signaling server and local P2P connections.
  *
  * Responsibilities:
- * - Maintain WebSocket connection to signaling server via WebSocketConnector.
- * - Create and manage a P2PConnection for WebRTC data channel communication.
- * - Forward offers, answers, and ICE candidates between the P2P layer and the signaling server.
+ * - Maintain a collection of P2P connections keyed by remote peer id.
+ * - Route signaling messages (offer/answer/ice-candidate) received via a signaling WebSocket
+ *   to the appropriate P2P connection.
+ * - Forward local signaling events (offer/answer/ice candidates) from P2P connections
+ *   to the signaling server.
  *
- * @class
+ * Usage:
+ * const client = new P2PSignalingClient(signalingUrl);
+ * client.connect();
+ * client.initiateP2P(remoteId).then(offer => { ... });
  */
 export class P2PSignalingClient {
   /**
-   * Create a new P2PSignalingClient.
+   * Create a P2P signaling client.
    *
-   * @param {string} signalingServerUrl - URL of the signaling WebSocket server.
+   * @param {string} signalingServerUrl - WebSocket URL of the signaling server.
    */
   constructor(signalingServerUrl) {
     /**
-     * WebSocket connector instance used for signaling.
+     * WebSocket connector instance used to communicate with the signaling server.
      * @type {WebSocketConnector}
      */
     this.ws = new WebSocketConnector(signalingServerUrl);
 
     /**
-     * Local P2P connection handling WebRTC logic and data channel.
-     * @type {P2PConnection}
+     * Map of remotePeerId -> P2PConnection instances.
+     * @type {Map<string, P2PConnection>}
      */
-    this.p2p = new P2PConnection();
+    this.peers = new Map();
 
     /**
-     * Identifier of the remote peer we are connecting to.
-     * @type {string|null}
-     */
-    this.remotePeerId = null;
-
-    /**
-     * Identifier assigned by the signaling server for this client.
+     * The id assigned by the signaling server for this client (if provided).
      * @type {string|null}
      */
     this.currentServerID = null;
 
-    // Set up signaling and P2P once the WebSocket is ready.
+    // Delay wiring signaling handlers until the WS reports ready.
     this.whenConnected(() => {
       this.setupSignaling();
-      this.setupP2P();
     });
   }
 
   /**
-   * Wire up WebSocket message handling and open event logging.
-   *
-   * - Parses incoming signaling messages and delegates to handleSignalingMessage.
-   * - Logs when the signaling server connection is established.
+   * Wire WebSocket events to parse and forward incoming signaling messages.
+   * Sets up:
+   * - onMessage: parse JSON and delegate to handleSignalingMessage
+   * - onOpen: log connection established
    *
    * @private
+   * @returns {void}
    */
   setupSignaling() {
-    // Handle signaling messages from server
     this.ws.onMessage((message) => {
       try {
         const data = JSON.parse(message);
@@ -74,87 +73,126 @@ export class P2PSignalingClient {
   }
 
   /**
-   * Wire up P2P event handlers to forward signaling messages via the WebSocket.
+   * Create and wire a P2PConnection for a specific remote peer id.
+   * If one already exists, returns it.
    *
-   * - Forwards local ICE candidates, offers, and answers to the signaling server.
-   * - Registers handlers for incoming P2P messages and connection state.
+   * The created P2PConnection will forward its local signaling events (offer, answer, ice)
+   * to the signaling server with the `to` field set to `remotePeerId`.
+   * It also logs application-level messages and connection events.
    *
    * @private
+   * @param {string} remotePeerId - Identifier of the remote peer.
+   * @returns {P2PConnection} The P2PConnection instance associated with the remote peer.
    */
-  setupP2P() {
-    // Send ICE candidates through signaling server
-    this.p2p.onIceCandidate((candidate) => {
+  createP2PConnection(remotePeerId) {
+    if (this.peers.has(remotePeerId)) {
+      return this.peers.get(remotePeerId);
+    }
+
+    const p2p = new P2PConnection();
+
+    // Forward local ICE candidates for this peer
+    p2p.onIceCandidate((candidate) => {
       this.ws.send({
         type: "ice-candidate",
-        to: this.remotePeerId,
-        candidate: candidate,
+        to: remotePeerId,
+        candidate,
       });
     });
 
-    // Send offer through signaling server
-    this.p2p.onOffer((offer) => {
+    // Forward local offers for this peer
+    p2p.onOffer((offer) => {
       this.ws.send({
         type: "offer",
-        to: this.remotePeerId,
-        offer: offer,
+        to: remotePeerId,
+        offer,
       });
     });
 
-    // Send answer through signaling server
-    this.p2p.onAnswer((answer) => {
+    // Forward local answers for this peer
+    p2p.onAnswer((answer) => {
       this.ws.send({
         type: "answer",
-        to: this.remotePeerId,
-        answer: answer,
+        to: remotePeerId,
+        answer,
       });
     });
 
-    // Handle P2P messages
-    this.p2p.onMessage((message) => {
-      console.log("P2P message received:", message);
-      // Handle application-level messages
+    // Application-level messages from this peer
+    p2p.onMessage((message) => {
+      console.log(`P2P message received from ${remotePeerId}:`, message);
+      // Application logic can be added here or p2p can expose events upward.
     });
 
-    // Handle P2P connection established
-    this.p2p.onConnected(() => {
-      console.log("P2P connection established!");
-      // Now we can communicate directly without the signaling server
+    // Connection established for this peer
+    p2p.onConnected(() => {
+      console.log(`P2P connection established with ${remotePeerId}`);
     });
+
+    // Store and return
+    this.peers.set(remotePeerId, p2p);
+    return p2p;
   }
 
   /**
-   * Process signaling messages received from the signaling server.
+   * Handle signaling messages and route them to the correct P2PConnection.
    *
-   * Recognized message types:
-   * - 'offer': set remote peer id and pass offer to the P2P connection.
-   * - 'answer': pass answer to the P2P connection.
-   * - 'ice-candidate': pass ICE candidate to the P2P connection.
-   * - 'id': store current server-assigned id.
+   * Expected `data.from` to identify the remote peer for offer/answer/ice-candidate messages.
    *
-   * @param {Object} data - Parsed signaling message object.
-   * @param {string} data.type - Message type.
-   * @param {string} [data.from] - Sender peer id (for offers).
-   * @param {Object} [data.offer] - SDP offer (when type === 'offer').
-   * @param {Object} [data.answer] - SDP answer (when type === 'answer').
-   * @param {Object} [data.candidate] - ICE candidate (when type === 'ice-candidate').
-   * @param {string} [data.id] - Assigned id (when type === 'id').
+   * Supported message shapes:
+   * - { type: "offer", from: "<peerId>", offer: {...} }
+   * - { type: "answer", from: "<peerId>", answer: {...} }
+   * - { type: "ice-candidate", from: "<peerId>", candidate: {...} }
+   * - { type: "id", id: "<serverAssignedId>" }
+   *
+   * @param {Object} data - Parsed signaling message.
    * @returns {void}
    */
   handleSignalingMessage(data) {
     switch (data.type) {
-      case "offer":
-        this.remotePeerId = data.from;
-        this.p2p.receiveOffer(data.offer);
+      case "offer": {
+        const from = data.from;
+        if (!from) {
+          console.warn("Offer received without `from` field:", data);
+          return;
+        }
+        const p2p = this.createP2PConnection(from);
+        p2p.receiveOffer(data.offer);
         break;
+      }
 
-      case "answer":
-        this.p2p.receiveAnswer(data.answer);
+      case "answer": {
+        const from = data.from;
+        if (!from) {
+          console.warn("Answer received without `from` field:", data);
+          return;
+        }
+        const p2p = this.peers.get(from);
+        if (p2p) {
+          p2p.receiveAnswer(data.answer);
+        } else {
+          console.warn("Received answer for unknown peer:", from);
+        }
         break;
+      }
 
-      case "ice-candidate":
-        this.p2p.addIceCandidate(data.candidate);
+      case "ice-candidate": {
+        const from = data.from;
+        if (!from) {
+          console.warn("ICE candidate received without `from` field:", data);
+          return;
+        }
+        const p2p = this.peers.get(from);
+        if (p2p) {
+          p2p.addIceCandidate(data.candidate);
+        } else {
+          console.warn("Received ICE candidate for unknown peer:", from);
+        }
         break;
+      }
+
       case "id":
+        // Server assigned id for this client
         this.currentServerID = data.id;
         break;
 
@@ -164,7 +202,7 @@ export class P2PSignalingClient {
   }
 
   /**
-   * Connect to the signaling server via WebSocket.
+   * Open the signaling WebSocket connection.
    *
    * @returns {void}
    */
@@ -173,44 +211,96 @@ export class P2PSignalingClient {
   }
 
   /**
-   * Initiate a P2P connection by setting the target remote peer id and creating an offer.
+   * Initiate a P2P connection to a remote peer.
    *
-   * The returned promise resolves with the created SDP offer.
+   * Creates (or reuses) a P2PConnection and calls its `initiate()` method which
+   * typically creates a local SDP offer and returns it.
    *
-   * @param {string} remotePeerId - The id of the peer to connect to.
-   * @returns {Promise<Object>} Promise resolving to the generated SDP offer.
+   * @param {string} remotePeerId - Identifier of the peer to initiate a connection with.
+   * @returns {Promise<Object>} Resolves with the created SDP offer object.
    */
   initiateP2P(remotePeerId) {
-    this.remotePeerId = remotePeerId;
-    return this.p2p.initiate();
+    const p2p = this.createP2PConnection(remotePeerId);
+    return p2p.initiate();
   }
 
   /**
-   * Send an application-level message over the established P2P data channel.
+   * Send an application-level message over a specific P2P data channel.
    *
-   * Delegates to P2PConnection.send.
+   * Usage:
+   * - sendMessage(remotePeerId, message)
+   * - sendMessage(message) -> sends to the first connected peer (backward compatibility)
    *
-   * @param {string|Object} message - Message to send. Objects will be serialized by P2PConnection.
+   * @param {string|Object} remotePeerIdOrMessage - remotePeerId when sending to a specific peer, or the message payload when using single-arg form.
+   * @param {string|Object} [message] - Message payload when using two-arg form.
    * @returns {boolean} True if the message was sent, false otherwise.
    */
-  sendMessage(message) {
-    return this.p2p.send(message);
+  sendMessage(remotePeerIdOrMessage, message) {
+    let remotePeerId = null;
+    let payload = message;
+
+    if (typeof message === "undefined") {
+      // Only one arg provided -> treat as payload and send to first connected peer
+      payload = remotePeerIdOrMessage;
+      const first = this.peers.values().next();
+      if (first.done) return false;
+      const firstP2P = first.value;
+      return firstP2P.send(payload);
+    } else {
+      remotePeerId = remotePeerIdOrMessage;
+    }
+
+    const p2p = this.peers.get(remotePeerId);
+    if (!p2p) {
+      console.warn("Attempt to send message to unknown peer:", remotePeerId);
+      return false;
+    }
+    return p2p.send(payload);
   }
 
   /**
-   * Cleanly close both P2P and WebSocket connections.
+   * Disconnect a specific peer connection and remove it from the peers map.
+   *
+   * @param {string} remotePeerId - Identifier of the peer to disconnect.
+   * @returns {void}
+   */
+  disconnectPeer(remotePeerId) {
+    const p2p = this.peers.get(remotePeerId);
+    if (p2p) {
+      try {
+        p2p.close();
+      } catch (e) {
+        console.warn("Error closing peer connection", remotePeerId, e);
+      }
+      this.peers.delete(remotePeerId);
+    }
+  }
+
+  /**
+   * Close all P2P connections and the signaling WebSocket.
+   *
+   * Ensures per-peer `close()` is called and clears internal state.
    *
    * @returns {void}
    */
   disconnect() {
-    this.p2p.close();
+    for (const [id, p2p] of this.peers.entries()) {
+      try {
+        p2p.close();
+      } catch (e) {
+        console.warn("Error closing peer connection", id, e);
+      }
+    }
+    this.peers.clear();
     this.ws.disconnect();
   }
 
   /**
-   * Register a callback to be invoked when the WebSocket is ready/connected.
+   * Register a callback to be executed when the signaling WebSocket is ready.
    *
-   * @param {function():void} callback - Function to call when signaling connection is ready.
+   * Delegates to the underlying WebSocketConnector's `whenReady` method.
+   *
+   * @param {Function} callback - Callback to execute when WS is ready.
    * @returns {void}
    */
   whenConnected(callback) {
