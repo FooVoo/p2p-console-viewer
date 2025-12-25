@@ -4,8 +4,16 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview"
+  },
+  "devDependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.2.1",
+    "ws": "^8.18.3"
+  },
+  "dependencies": {
+    "uuid": "^13.0.0"
   }
 }

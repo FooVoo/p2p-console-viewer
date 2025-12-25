@@ -1,8 +1,12 @@
+import {P2PConnection} from "./p2p-connection.js";
+import {WebSocketConnector} from "./websocket-connector.js";
+
 export class P2PSignalingClient {
     constructor(signalingServerUrl) {
         this.ws = new WebSocketConnector(signalingServerUrl);
         this.p2p = new P2PConnection();
         this.remotePeerId = null;
+        this.currentServerID = null;
 
         this.setupSignaling();
         this.setupP2P();
@@ -79,6 +83,9 @@ export class P2PSignalingClient {
             case 'ice-candidate':
                 this.p2p.addIceCandidate(data.candidate);
                 break;
+            case 'id':
+                this.currentServerID = data.id;
+                break;
 
             default:
                 console.log('Unknown signaling message:', data);
@@ -101,5 +108,9 @@ export class P2PSignalingClient {
     disconnect() {
         this.p2p.close();
         this.ws.disconnect();
+    }
+
+    whenConnected(callback) {
+        this.ws.whenReady(callback);
     }
 }

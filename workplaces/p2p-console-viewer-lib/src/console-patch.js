@@ -5,7 +5,7 @@ export class ConsoleInterceptor {
     }
 
     // Apply the monkey patch
-    patch() {
+    patch(callback) {
         if (this.isPatched) return;
 
         const methodsToPatch = ['log', 'info', 'warn', 'error', 'debug'];
@@ -16,6 +16,7 @@ export class ConsoleInterceptor {
 
             // Replace with wrapped version
             console[method] = (...args) => {
+                callback(method, ...args);
                 // Call the previous implementation first
                 this.originalMethods[method](...args);
             };
