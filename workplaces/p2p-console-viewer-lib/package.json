@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
-    "type-gen": "npx -p typescript tsc src/**/*.js --declaration --allowJs --emitDeclarationOnly --outDir types",
+    "type-gen": "npx -p typescript tsc src/*.js --declaration --allowJs --emitDeclarationOnly --outDir types",
     "prepack": "npm run type-gen",
     "preview": "vite preview"
   },
