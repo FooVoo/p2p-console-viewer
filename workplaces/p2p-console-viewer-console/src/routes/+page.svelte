@@ -1,6 +1,7 @@
-<script>
+<script lang="ts">
 	import { messages } from '$lib/stores/messages.store.ts';
 	import { P2PSignalingClient } from 'p2p-console-viewer-lib';
+	import { get } from "svelte/store";
 
 	const client = new P2PSignalingClient('http://localhost:3000');
 
@@ -9,6 +10,18 @@
 		client.connect();
 		client.whenConnected(() => {
 			console.log('Connected to signaling server');
+		});
+		client.onMessage((message: string) => {
+			messages.update(() => {
+				return [
+					...get(messages),
+					{
+						timestamp: new Date().getTime(),
+						content: message as string,
+						direction: 'inbound'
+					}
+				];
+			});
 		});
 	};
 </script>
