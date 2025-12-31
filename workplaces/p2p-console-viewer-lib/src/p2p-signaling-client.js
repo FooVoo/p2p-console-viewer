@@ -22,8 +22,10 @@ export class P2PSignalingClient {
    * Create a P2P signaling client.
    *
    * @param {string} signalingServerUrl - WebSocket URL of the signaling server.
+   * @param {Object} [options={}] - Optional configuration.
+   * @param {string} [options.room] - Room name to join on connection.
    */
-  constructor(signalingServerUrl) {
+  constructor(signalingServerUrl, options = {}) {
     /**
      * WebSocket connector instance used to communicate with the signaling server.
      * @type {WebSocketConnector}
@@ -42,9 +44,25 @@ export class P2PSignalingClient {
      */
     this.currentServerID = null;
 
+    /**
+     * The room this client is currently in.
+     * @type {string|null}
+     */
+    this.currentRoom = options.room || null;
+
+    /**
+     * List of peer IDs in the current room.
+     * @type {Array<string>}
+     */
+    this.roomPeers = [];
+
     // Delay wiring signaling handlers until the WS reports ready.
     this.whenConnected(() => {
       this.setupSignaling();
+      // Auto-join room if specified
+      if (this.currentRoom) {
+        this.joinRoom(this.currentRoom);
+      }
     });
   }
 
@@ -144,6 +162,11 @@ export class P2PSignalingClient {
    * - { type: "answer", from: "<peerId>", answer: {...} }
    * - { type: "ice-candidate", from: "<peerId>", candidate: {...} }
    * - { type: "id", id: "<serverAssignedId>" }
+   * - { type: "room-joined", room: "<roomName>" }
+   * - { type: "room-left", room: "<roomName>" }
+   * - { type: "room-peers", peers: ["<peerId1>", "<peerId2>", ...] }
+   * - { type: "peer-joined", peerId: "<peerId>" }
+   * - { type: "peer-left", peerId: "<peerId>" }
    *
    * @param {Object} data - Parsed signaling message.
    * @returns {void}
@@ -194,6 +217,44 @@ export class P2PSignalingClient {
       case "id":
         // Server assigned id for this client
         this.currentServerID = data.id;
+        console.log("Assigned server ID:", this.currentServerID);
+        break;
+
+      case "room-joined":
+        // Confirmation that we joined a room
+        this.currentRoom = data.room;
+        console.log("Joined room:", this.currentRoom);
+        break;
+
+      case "room-left":
+        // Confirmation that we left a room
+        console.log("Left room:", data.room);
+        this.currentRoom = null;
+        this.roomPeers = [];
+        break;
+
+      case "room-peers":
+        // List of peers currently in the room
+        this.roomPeers = data.peers || [];
+        console.log("Peers in room:", this.roomPeers);
+        break;
+
+      case "peer-joined":
+        // A new peer joined the room
+        if (data.peerId && !this.roomPeers.includes(data.peerId)) {
+          this.roomPeers.push(data.peerId);
+          console.log("Peer joined room:", data.peerId);
+        }
+        break;
+
+      case "peer-left":
+        // A peer left the room
+        if (data.peerId) {
+          this.roomPeers = this.roomPeers.filter((id) => id !== data.peerId);
+          console.log("Peer left room:", data.peerId);
+          // Clean up P2P connection for this peer
+          this.disconnectPeer(data.peerId);
+        }
         break;
 
       default:
@@ -208,6 +269,49 @@ export class P2PSignalingClient {
    */
   connect() {
     this.ws.connect();
+  }
+
+  /**
+   * Join a room on the signaling server.
+   *
+   * @param {string} roomName - Name of the room to join.
+   * @returns {void}
+   */
+  joinRoom(roomName) {
+    if (!roomName) {
+      console.warn("Room name is required to join a room");
+      return;
+    }
+    this.ws.send({
+      type: "join-room",
+      room: roomName,
+    });
+    console.log("Requesting to join room:", roomName);
+  }
+
+  /**
+   * Leave the current room on the signaling server.
+   *
+   * @returns {void}
+   */
+  leaveRoom() {
+    if (!this.currentRoom) {
+      console.warn("Not currently in a room");
+      return;
+    }
+    this.ws.send({
+      type: "leave-room",
+    });
+    console.log("Requesting to leave room:", this.currentRoom);
+  }
+
+  /**
+   * Get the list of peers in the current room.
+   *
+   * @returns {Array<string>} Array of peer IDs in the current room.
+   */
+  getRoomPeers() {
+    return [...this.roomPeers];
   }
 
   /**
