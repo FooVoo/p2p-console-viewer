@@ -5,7 +5,7 @@
 	import { get } from 'svelte/store';
 	import { onMount } from 'svelte';
 
-	const client = new P2PSignalingClient('http://localhost:3000');
+	const client = new P2PSignalingClient('ws://localhost:3000');
 	let inputMessage = '';
 	let isConnected = false;
 	let connectionState = 'disconnected';
@@ -18,7 +18,7 @@
 		stateUpdateInterval = setInterval(() => {
 			connectionState = client.getConnectionState();
 			isConnected = client.isConnected();
-		}, 500);
+		}, 1000); // Update every second
 
 		return () => {
 			if (stateUpdateInterval) {
