@@ -4,7 +4,7 @@ Comprehensive unit tests for the p2p-console-viewer project using [Vitest](https
 
 ## Overview
 
-The test suite provides complete coverage of both the P2P library and signaling server with **250 tests** covering normal operation, edge cases, and error handling scenarios.
+The test suite provides complete coverage of the P2P library, signaling server, and console viewer with **280 tests** covering normal operation, edge cases, and error handling scenarios.
 
 ## Structure
 
@@ -12,16 +12,19 @@ The test suite provides complete coverage of both the P2P library and signaling 
 test/
 ├── lib/              # Tests for p2p-console-viewer-lib (201 tests)
 │   ├── websocket-connector.test.js           # Connection lifecycle (24 tests)
-│   ├── websocket-connector-edge-cases.test.js # Edge cases (28 tests)
+│   ├── websocket-connector-edge-cases.test.js # Edge cases (22 tests)
 │   ├── p2p-signaling-client.test.js          # Signaling + room management (28 tests)
-│   ├── p2p-signaling-client-edge-cases.test.js # Edge cases + error handling (47 tests)
-│   ├── p2p-connection.test.js                # WebRTC connections (39 tests)
-│   ├── console-patch.test.js                 # Console interception (30 tests)
-│   ├── p2p-message-helper.test.js            # Message formatting (25 tests)
+│   ├── p2p-signaling-client-edge-cases.test.js # Edge cases + error handling (33 tests)
+│   ├── p2p-connection.test.js                # WebRTC connections (36 tests)
+│   ├── console-patch.test.js                 # Console interception (18 tests)
+│   ├── p2p-message-helper.test.js            # Message formatting (40 tests)
 │   └── README.md
-└── server/           # Tests for p2p-console-viewer-server (49 tests)
-    ├── server-logic.test.js                  # Room management + routing (18 tests)
-    ├── server-edge-cases.test.js             # Edge cases (13 tests)
+├── server/           # Tests for p2p-console-viewer-server (49 tests)
+│   ├── server-logic.test.js                  # Room management + routing (18 tests)
+│   ├── server-edge-cases.test.js             # Edge cases (31 tests)
+│   └── README.md
+└── console/          # Tests for p2p-console-viewer-console (30 tests)
+    ├── message-handling.test.js              # Message parsing/serialization (30 tests)
     └── README.md
 ```
 
@@ -38,11 +41,16 @@ npm run test:watch
 
 # Generate coverage report
 npm run test:coverage
+
+# Run specific test suite
+npm test test/lib
+npm test test/server
+npm test test/console
 ```
 
 ## Test Statistics
 
-- **Total Tests**: 250
+- **Total Tests**: 280
   - Library tests: 201
     - WebSocketConnector: 46 (24 base + 22 edge cases)
     - P2PSignalingClient: 61 (28 base + 33 edge cases)
@@ -50,6 +58,7 @@ npm run test:coverage
     - ConsoleInterceptor: 18
     - P2pMessageHelper: 40
   - Server tests: 49 (18 base + 31 edge cases)
+  - Console viewer tests: 30 (message handling)
 
 ## Coverage
 
@@ -71,6 +80,14 @@ The test suite provides comprehensive coverage of:
 - **Protocol messages**: ID assignment, room events, peer notifications
 - **Edge cases**: Extreme inputs, boundary conditions, concurrent operations
 
+### Console Viewer (`p2p-console-viewer-console`)
+- **Message parsing**: Structured console messages vs plain text
+- **Type preservation**: log/info/warn/error/debug types through transmission
+- **Direction tracking**: Inbound vs outbound message labeling
+- **Serialization**: Converting messages for transmission
+- **Edge cases**: Malformed JSON, unicode, very long messages, nested structures
+- **Round-trip integrity**: Data preservation through serialize → parse cycle
+
 ## Configuration
 
 Tests are configured via `vitest.config.js` in the root directory. Key settings:
@@ -83,7 +100,7 @@ Tests are configured via `vitest.config.js` in the root directory. Key settings:
 
 ## Writing New Tests
 
-1. Create test files in the appropriate directory (`test/lib/` or `test/server/`)
+1. Create test files in the appropriate directory (`test/lib/`, `test/server/`, or `test/console/`)
 2. Follow the naming convention: `*.test.js` or `*-edge-cases.test.js`
 3. Use descriptive test names and group related tests with `describe`
 4. Mock external dependencies where appropriate (WebSocket, RTCPeerConnection)
