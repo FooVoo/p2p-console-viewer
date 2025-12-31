@@ -6,10 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "dev": "node server.js"
   },
   "keywords": [
     "webrtc",
@@ -24,9 +21,5 @@
     "express": "^5.2.1",
     "ws": "^8.18.3",
     "uuid": "^13.0.0"
-  },
-  "devDependencies": {
-    "vitest": "^2.1.8",
-    "@vitest/coverage-v8": "^2.1.8"
   }
 }

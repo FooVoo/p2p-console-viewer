@@ -1,11 +1,13 @@
-# Test Suite
+# Test Suite - Library Tests
 
 This directory contains unit tests for the p2p-console-viewer-lib library.
 
 ## Running Tests
 
+From the root directory:
+
 ```bash
-# Run all tests
+# Run all tests (including lib and server)
 npm test
 
 # Run tests in watch mode

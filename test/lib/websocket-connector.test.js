@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { WebSocketConnector } from '../src/websocket-connector.js';
+import { WebSocketConnector } from '../../workplaces/p2p-console-viewer-lib/src/websocket-connector.js';
 
 // Mock WebSocket
 class MockWebSocket {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { P2PSignalingClient } from '../src/p2p-signaling-client.js';
+import { P2PSignalingClient } from '../../workplaces/p2p-console-viewer-lib/src/p2p-signaling-client.js';
 
 // Mock WebSocketConnector
 class MockWebSocketConnector {
@@ -56,7 +56,7 @@ class MockWebSocketConnector {
 }
 
 // Mock P2PConnection
-vi.mock('../src/p2p-connection.js', () => ({
+vi.mock('../../workplaces/p2p-console-viewer-lib/src/p2p-connection.js', () => ({
   P2PConnection: class MockP2PConnection {
     constructor() {
       this.iceCandidateHandlers = [];
@@ -124,7 +124,7 @@ describe('P2PSignalingClient', () => {
     mockWebSocketConnector = new MockWebSocketConnector('ws://localhost:3000');
     
     // Mock the WebSocketConnector import
-    vi.doMock('../src/websocket-connector.js', () => ({
+    vi.doMock('../../workplaces/p2p-console-viewer-lib/src/websocket-connector.js', () => ({
       WebSocketConnector: vi.fn(() => mockWebSocketConnector)
     }));
   });

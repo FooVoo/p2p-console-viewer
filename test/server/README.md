@@ -1,11 +1,13 @@
-# Test Suite
+# Test Suite - Server Tests
 
 This directory contains unit tests for the p2p-console-viewer-server signaling server.
 
 ## Running Tests
 
+From the root directory:
+
 ```bash
-# Run all tests
+# Run all tests (including lib and server)
 npm test
 
 # Run tests in watch mode
