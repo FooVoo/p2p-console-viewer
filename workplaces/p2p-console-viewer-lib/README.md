@@ -12,13 +12,15 @@ Current version: **0.0.3**
 
 ## Features
 
-- **WebSocket Connector**: Establish WebSocket connections for signaling
+- **WebSocket Connector**: Establish WebSocket connections for signaling with automatic reconnection
 - **P2P Signaling Client**: Handle WebRTC signaling for peer discovery and connection with room support
 - **P2P Connection**: Manage WebRTC data channels for peer-to-peer communication
 - **Room-based Isolation**: Join rooms to isolate P2P connections between specific groups of peers
 - **Peer Discovery**: Automatically discover other peers in the same room
+- **Graceful Error Handling**: Comprehensive error handling with `onError` and `onPeerError` handlers
 - **Console Patch**: Intercept console methods (log, warn, error, etc.) and transmit output
 - **Message Helper**: Utilities for formatting and handling P2P messages
+- **Comprehensive Test Coverage**: 201 tests covering all library functionality and edge cases
 
 ## Installation
 
@@ -36,6 +38,15 @@ import { P2PSignalingClient, patchConsole } from 'p2p-console-viewer-lib';
 // Connect to signaling server and join a room
 const signalingClient = new P2PSignalingClient('ws://localhost:3000', {
   room: 'my-room'
+});
+
+// Set up error handlers for graceful error handling
+signalingClient.onError((error) => {
+  console.error('Client error:', error.message);
+});
+
+signalingClient.onPeerError((peerId, error) => {
+  console.error(`Error with peer ${peerId}:`, error.message);
 });
 
 signalingClient.connect();
@@ -113,7 +124,7 @@ workplaces/p2p-console-viewer-lib/
 ├── src/
 │   ├── console-patch.js          # Console interception utilities
 │   ├── p2p-connection.js         # WebRTC peer connection management
-│   ├── p2p-signaling-client.js   # Signaling protocol implementation
+│   ├── p2p-signaling-client.js   # Signaling protocol with error handling
 │   ├── websocket-connector.js    # WebSocket connection wrapper
 │   ├── p2p-message-helper.js     # Message formatting utilities
 │   ├── public-api.js             # Main library exports
@@ -123,6 +134,16 @@ workplaces/p2p-console-viewer-lib/
 ├── public/                        # Public assets
 ├── package.json
 └── index.html                     # Demo page
+
+# Tests are located in the root test/ directory
+../../test/lib/                    # 221 comprehensive tests
+├── websocket-connector.test.js
+├── websocket-connector-edge-cases.test.js
+├── p2p-signaling-client.test.js
+├── p2p-signaling-client-edge-cases.test.js
+├── p2p-connection.test.js
+├── console-patch.test.js
+└── p2p-message-helper.test.js
 ```
 
 ## Scripts
@@ -131,6 +152,25 @@ workplaces/p2p-console-viewer-lib/
 - `npm run build` - Build the library for production
 - `npm run type-gen` - Generate TypeScript type declarations
 - `npm run preview` - Preview the production build
+
+## Testing
+
+Tests are located in the root `test/lib/` directory. To run tests:
+
+```bash
+# From the repository root
+npm test              # Run all tests
+npm run test:watch    # Run tests in watch mode
+npm run test:coverage # Generate coverage report
+```
+
+**Test Coverage**: 201 tests covering:
+- WebSocketConnector (46 tests): Connection lifecycle, message handling, edge cases
+- P2PSignalingClient (61 tests): Room management, signaling, error handling, edge cases
+- P2PConnection (36 tests): WebRTC lifecycle, data channels
+- ConsoleInterceptor (18 tests): Console patching, callbacks
+- P2pMessageHelper (40 tests): Message formatting, serialization
+- Error handling: Input validation, async errors, callback protection
 
 ## Development
 
@@ -188,10 +228,12 @@ Opens the WebSocket connection to the signaling server.
 
 ##### `joinRoom(roomName)`
 Join a specific room on the signaling server.
-- `roomName` (string): Name of the room to join
+- `roomName` (string): Name of the room to join (validated: must be non-empty string)
+- Returns: `boolean` - True if request sent successfully, false on validation failure
 
 ##### `leaveRoom()`
 Leave the current room.
+- Returns: `boolean` - True if request sent successfully, false if not in a room
 
 ##### `getRoomPeers()`
 Get the list of peer IDs in the current room.
@@ -199,8 +241,8 @@ Get the list of peer IDs in the current room.
 
 ##### `initiateP2P(remotePeerId)`
 Initiate a P2P connection to a specific remote peer.
-- `remotePeerId` (string): ID of the peer to connect to
-- Returns: `Promise<Object>` - Resolves with the SDP offer
+- `remotePeerId` (string): ID of the peer to connect to (validated: must be non-empty string)
+- Returns: `Promise<Object>` - Resolves with the SDP offer, rejects on error
 
 ##### `sendMessage(remotePeerId, message)`
 Send a message over the P2P data channel.
@@ -213,7 +255,31 @@ Close all P2P connections and the signaling WebSocket.
 
 ##### `whenConnected(callback)`
 Register a callback to be executed when the signaling WebSocket is ready.
-- `callback` (Function): Called when connected
+- `callback` (Function): Called when connected (errors in callback are caught and emitted)
+
+##### `onError(handler)`
+Register a handler for general errors (WebSocket, server, validation errors).
+- `handler` (Function): Called with error object: `(error) => { ... }`
+
+**Example:**
+```javascript
+client.onError((error) => {
+  console.error('Client error:', error.message);
+  // Handle WebSocket errors, server errors, validation errors
+});
+```
+
+##### `onPeerError(handler)`
+Register a handler for peer-specific connection errors.
+- `handler` (Function): Called with peer ID and error: `(peerId, error) => { ... }`
+
+**Example:**
+```javascript
+client.onPeerError((peerId, error) => {
+  console.error(`Error with peer ${peerId}:`, error.message);
+  // Handle WebRTC connection failures, signaling errors for specific peers
+});
+```
 
 ### P2PConnection
 

@@ -9,12 +9,31 @@ WebSocket-based signaling server for WebRTC peer-to-peer connections with room s
 - **Peer Discovery**: Notifies clients about other peers in the same room
 - **Auto Cleanup**: Automatically removes empty rooms when the last client leaves
 - **Status Endpoint**: HTTP endpoint to monitor connected clients and rooms
+- **Error Handling**: Comprehensive error messages for invalid operations
+- **Comprehensive Test Coverage**: 49 tests covering room management, routing, and edge cases
 
 ## Installation
 
 ```bash
 npm install
 ```
+
+## Testing
+
+Tests are located in the root `test/server/` directory. To run tests:
+
+```bash
+# From the repository root
+npm test              # Run all tests
+npm run test:watch    # Run tests in watch mode
+npm run test:coverage # Generate coverage report
+```
+
+**Test Coverage**: 49 tests covering:
+- Room management (18 tests): Create, join, leave, cleanup
+- Message routing: Same room vs. different rooms
+- Protocol messages: ID assignment, room events, peer notifications
+- Edge cases (31 tests): Extreme inputs, boundary conditions, concurrent operations
 
 ## Usage
 
@@ -170,6 +189,15 @@ import { P2PSignalingClient } from 'p2p-console-viewer-lib';
 // Connect and join a room
 const client = new P2PSignalingClient('ws://localhost:3000', {
   room: 'my-room'
+});
+
+// Set up error handlers
+client.onError((error) => {
+  console.error('Client error:', error.message);
+});
+
+client.onPeerError((peerId, error) => {
+  console.error(`Error with peer ${peerId}:`, error.message);
 });
 
 client.connect();
