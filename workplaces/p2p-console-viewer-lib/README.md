@@ -13,8 +13,10 @@ Current version: **0.0.3**
 ## Features
 
 - **WebSocket Connector**: Establish WebSocket connections for signaling
-- **P2P Signaling Client**: Handle WebRTC signaling for peer discovery and connection
+- **P2P Signaling Client**: Handle WebRTC signaling for peer discovery and connection with room support
 - **P2P Connection**: Manage WebRTC data channels for peer-to-peer communication
+- **Room-based Isolation**: Join rooms to isolate P2P connections between specific groups of peers
+- **Peer Discovery**: Automatically discover other peers in the same room
 - **Console Patch**: Intercept console methods (log, warn, error, etc.) and transmit output
 - **Message Helper**: Utilities for formatting and handling P2P messages
 
@@ -26,27 +28,82 @@ npm install p2p-console-viewer-lib
 
 ## Usage
 
+### Basic Usage with Room Support
+
 ```javascript
-import {
-  WebSocketConnector,
-  P2PConnection,
-  P2PSignalingClient,
-  patchConsole,
-  MessageHelper
-} from 'p2p-console-viewer-lib';
+import { P2PSignalingClient, patchConsole } from 'p2p-console-viewer-lib';
 
-// Example usage:
-// 1. Create WebSocket connection
-const ws = new WebSocketConnector('ws://your-signaling-server.com');
+// Connect to signaling server and join a room
+const signalingClient = new P2PSignalingClient('ws://localhost:3000', {
+  room: 'my-room'
+});
 
-// 2. Initialize P2P signaling client
-const signalingClient = new P2PSignalingClient(ws);
+signalingClient.connect();
 
-// 3. Create P2P connection
-const p2pConnection = new P2PConnection(signalingClient);
+// Patch console to send logs over P2P
+patchConsole(signalingClient);
 
-// 4. Patch console to send logs over P2P
-patchConsole(p2pConnection);
+// All console output will be transmitted to peers in the same room
+console.log('Hello from my application!');
+```
+
+### Join Room After Connection
+
+```javascript
+import { P2PSignalingClient } from 'p2p-console-viewer-lib';
+
+const client = new P2PSignalingClient('ws://localhost:3000');
+client.connect();
+
+// Join a room after connecting
+client.whenConnected(() => {
+  client.joinRoom('my-room');
+});
+```
+
+### Discover and Connect to Peers
+
+```javascript
+import { P2PSignalingClient } from 'p2p-console-viewer-lib';
+
+const client = new P2PSignalingClient('ws://localhost:3000', {
+  room: 'collaboration-room'
+});
+
+client.connect();
+
+client.whenConnected(() => {
+  // Get list of peers in the room
+  const peers = client.getRoomPeers();
+  
+  if (peers.length > 0) {
+    // Initiate P2P connection with first peer
+    const remotePeerId = peers[0];
+    client.initiateP2P(remotePeerId).then(() => {
+      console.log('P2P connection initiated with', remotePeerId);
+    });
+  }
+});
+```
+
+### Switch Between Rooms
+
+```javascript
+import { P2PSignalingClient } from 'p2p-console-viewer-lib';
+
+const client = new P2PSignalingClient('ws://localhost:3000');
+client.connect();
+
+client.whenConnected(() => {
+  // Join first room
+  client.joinRoom('room-1');
+  
+  // Later, switch to another room
+  setTimeout(() => {
+    client.leaveRoom();
+    client.joinRoom('room-2');
+  }, 5000);
+});
 ```
 
 ## Project Structure
@@ -102,20 +159,114 @@ npm run build
 
 ## API Documentation
 
-### WebSocketConnector
-Manages WebSocket connections for signaling.
+### P2PSignalingClient
+
+Main client for WebRTC signaling with room support.
+
+#### Constructor
+
+```javascript
+new P2PSignalingClient(signalingServerUrl, options)
+```
+
+**Parameters:**
+- `signalingServerUrl` (string): WebSocket URL of the signaling server
+- `options` (object, optional):
+  - `room` (string): Room name to join on connection
+
+**Example:**
+```javascript
+const client = new P2PSignalingClient('ws://localhost:3000', {
+  room: 'my-room'
+});
+```
+
+#### Methods
+
+##### `connect()`
+Opens the WebSocket connection to the signaling server.
+
+##### `joinRoom(roomName)`
+Join a specific room on the signaling server.
+- `roomName` (string): Name of the room to join
+
+##### `leaveRoom()`
+Leave the current room.
+
+##### `getRoomPeers()`
+Get the list of peer IDs in the current room.
+- Returns: `Array<string>` - Array of peer IDs
+
+##### `initiateP2P(remotePeerId)`
+Initiate a P2P connection to a specific remote peer.
+- `remotePeerId` (string): ID of the peer to connect to
+- Returns: `Promise<Object>` - Resolves with the SDP offer
+
+##### `sendMessage(remotePeerId, message)`
+Send a message over the P2P data channel.
+- `remotePeerId` (string): Target peer ID
+- `message` (string|Object): Message to send
+- Returns: `boolean` - True if sent successfully
+
+##### `disconnect()`
+Close all P2P connections and the signaling WebSocket.
+
+##### `whenConnected(callback)`
+Register a callback to be executed when the signaling WebSocket is ready.
+- `callback` (Function): Called when connected
 
 ### P2PConnection
+
 Handles WebRTC peer connections and data channels.
 
-### P2PSignalingClient
-Implements the signaling protocol for peer discovery and connection establishment.
+#### Methods
 
-### patchConsole()
-Patches native console methods to intercept and transmit logs.
+##### `initiate()`
+Initialize as the connection initiator (creates offer).
+- Returns: `Promise<RTCSessionDescriptionInit>` - The created SDP offer
 
-### MessageHelper
-Provides utilities for formatting and processing messages sent over the P2P connection.
+##### `receiveOffer(offer)`
+Initialize as the connection receiver (receives offer, creates answer).
+- `offer` (RTCSessionDescriptionInit): Remote SDP offer
+- Returns: `Promise<RTCSessionDescriptionInit>` - The created SDP answer
+
+##### `send(message)`
+Send a message through the data channel.
+- `message` (string|Object): Message to send
+- Returns: `boolean` - True if sent successfully
+
+##### `close()`
+Close the connection and cleanup resources.
+
+##### `isConnected()`
+Check if connection is established and data channel is open.
+- Returns: `boolean`
+
+### WebSocketConnector
+
+Lightweight wrapper around the browser WebSocket API.
+
+#### Methods
+
+##### `connect()`
+Open the WebSocket connection.
+
+##### `send(message)`
+Send a message over the WebSocket.
+- `message` (string|Object): Message to send
+- Returns: `boolean` - True if sent successfully
+
+##### `disconnect(preventReconnect)`
+Close the WebSocket connection.
+- `preventReconnect` (boolean): If true, stops automatic reconnection
+
+##### `onMessage(handler)`
+Register a handler for incoming messages.
+- `handler` (Function): Called with message data
+
+##### `whenReady(callback)`
+Run a callback when the WebSocket is open and ready.
+- `callback` (Function): Called when ready
 
 ## Architecture
 
