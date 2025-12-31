@@ -1,6 +1,18 @@
 import type { P2PMessage } from '$lib/stores/messages.store';
 
 /**
+ * Generate a unique ID for messages
+ * Uses crypto.randomUUID() when available, falls back to timestamp + random
+ */
+function generateMessageId(): string {
+	if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+		return crypto.randomUUID();
+	}
+	// Fallback for environments without crypto.randomUUID
+	return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+/**
  * Helper to parse incoming P2P messages
  * Supports both structured console messages and plain text
  */
@@ -11,7 +23,7 @@ export function parseP2PMessage(data: string, direction: 'inbound' | 'outbound')
 		// Check if it's a structured console message (from P2pMessageHelper)
 		if (parsed && typeof parsed === 'object' && 'level' in parsed && 'timestamp' in parsed) {
 			return {
-				id: parsed.id || `${Date.now()}-${Math.random()}`,
+				id: parsed.id || generateMessageId(),
 				timestamp: parsed.timestamp,
 				direction,
 				type: parsed.level as 'log' | 'info' | 'warn' | 'error' | 'debug',
@@ -23,7 +35,7 @@ export function parseP2PMessage(data: string, direction: 'inbound' | 'outbound')
 		
 		// If it's JSON but not a console message, stringify it
 		return {
-			id: `${Date.now()}-${Math.random()}`,
+			id: generateMessageId(),
 			timestamp: Date.now(),
 			direction,
 			type: 'text',
@@ -34,7 +46,7 @@ export function parseP2PMessage(data: string, direction: 'inbound' | 'outbound')
 	} catch (e) {
 		// Plain text message
 		return {
-			id: `${Date.now()}-${Math.random()}`,
+			id: generateMessageId(),
 			timestamp: Date.now(),
 			direction,
 			type: 'text',

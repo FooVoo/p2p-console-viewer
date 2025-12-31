@@ -26,7 +26,7 @@
 
 		// Create outbound message
 		const outboundMsg: P2PMessage = {
-			id: `${Date.now()}-${Math.random()}`,
+			id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
 			timestamp: Date.now(),
 			direction: 'outbound',
 			type: 'text',
@@ -38,9 +38,11 @@
 		// Add to messages store
 		messages.update((msgs) => [...msgs, outboundMsg]);
 
-		// Send via P2P (client.send would need to be implemented)
-		// For now, this is a placeholder
-		console.log('Sending message:', inputMessage);
+		// NOTE: Actual P2P transmission requires P2PConnection integration
+		// This would be: connection.send(serializeP2PMessage(outboundMsg))
+		// For now, this demonstrates the message structure and UI
+		console.log('Message prepared for sending:', inputMessage);
+		console.warn('P2PConnection.send() integration pending - message stored locally only');
 
 		inputMessage = '';
 	};

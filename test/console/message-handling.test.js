@@ -365,12 +365,13 @@ describe('Message Handling - serializeP2PMessage', () => {
     expect(result).toBe('null');
   });
 
-  it('should handle undefined by converting to null', () => {
+  it('should handle undefined by returning undefined', () => {
     const input = undefined;
 
     const result = serializeP2PMessage(input);
 
-    expect(result).toBe(undefined); // JSON.stringify returns undefined for undefined
+    // JSON.stringify(undefined) returns undefined (not a string)
+    expect(result).toBe(undefined);
   });
 
   it('should handle nested objects', () => {
