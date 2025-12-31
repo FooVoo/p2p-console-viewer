@@ -1,17 +1,22 @@
 {
   "name": "p2p-console-viewer-lib",
   "private": true,
-  "version": "0.0.3",
+  "version": "0.0.6",
   "type": "module",
   "main": "./src/public-api.js",
-  "files": ["./src/**.js", "./types/**.d.ts"],
+  "files": [
+    "./src/**.js",
+    "./src/**/*,js",
+    "./types/**.d.ts"
+  ],
   "types": "./types/public-api.d.ts",
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
     "type-gen": "npx -p typescript tsc src/*.js --declaration --allowJs --emitDeclarationOnly --outDir types",
     "prepack": "npm run type-gen",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postversion": "npm pack"
   },
   "devDependencies": {
     "cors": "^2.8.5",

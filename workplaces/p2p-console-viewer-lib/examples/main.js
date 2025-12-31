@@ -19,6 +19,6 @@ client.connect();
 
 setTimeout(() => {
   client.sendMessage(
-    `Hello from P2P Console Viewer Lib after 10 seconds! ${client.currentServerID}`,
+      `Hello from P2P Console Viewer Lib after 10 seconds! ${client.assignedId}`,
   );
 }, 10000);

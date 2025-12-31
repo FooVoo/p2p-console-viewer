@@ -9,7 +9,6 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-let nextClientId = 1;
 const clients = new Map(); // id -> ws
 
 // app.use(cors({origin: '*'}));

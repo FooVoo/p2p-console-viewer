@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { messages } from '$lib/stores/messages.store.ts';
-	import { P2PSignalingClient } from 'p2p-console-viewer-lib';
-	import { get } from "svelte/store";
+	import { P2PSignalingClient, RestClient } from 'p2p-console-viewer-lib';
+
+	const restClient = new RestClient('http://localhost:3000/api');
 
 	const client = new P2PSignalingClient('http://localhost:3000');
+
+	const remotePeers = [];
 
 	const connect = () => {
 		console.log('connecting...');
@@ -11,24 +14,24 @@
 		client.whenConnected(() => {
 			console.log('Connected to signaling server');
 		});
-		client.onMessage((message: string) => {
-			messages.update(() => {
-				return [
-					...get(messages),
-					{
-						timestamp: new Date().getTime(),
-						content: message as string,
-						direction: 'inbound'
-					}
-				];
-			});
-		});
+	};
+
+	const getRemotePeers = async () => {
+		const peers = await restClient.get<string[]>('/peers');
+		remotePeers.push(...peers);
 	};
 </script>
 
 <main>
 	<h1>P2P Console Viewer</h1>
-	<button on:click={connect}>Connect</button>
+	<div>
+		{#if client.assignedId}
+			<span>Assigned ID: {client.assignedId}</span>
+			<button on:click={getRemotePeers}>Remote Peers</button>
+		{:else}
+			<button on:click={connect}>Connect</button>
+		{/if}
+	</div>
 	<section>
 		{#each $messages as message (message.timestamp)}
 			<div class="message {message.direction}">

@@ -34,7 +34,7 @@ export class P2PSignalingClient {
      * The id assigned by the signaling server for this client (if provided).
      * @type {string|null}
      */
-    currentServerID: string | null;
+    assignedId: string | null;
     /**
      * Wire WebSocket events to parse and forward incoming signaling messages.
      * Sets up:

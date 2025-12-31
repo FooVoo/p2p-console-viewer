@@ -40,7 +40,7 @@ export class P2PSignalingClient {
      * The id assigned by the signaling server for this client (if provided).
      * @type {string|null}
      */
-    this.currentServerID = null;
+    this.assignedId = null;
 
     // Delay wiring signaling handlers until the WS reports ready.
     this.whenConnected(() => {
@@ -193,7 +193,7 @@ export class P2PSignalingClient {
 
       case "id":
         // Server assigned id for this client
-        this.currentServerID = data.id;
+        this.assignedId = data.id;
         break;
 
       default:
