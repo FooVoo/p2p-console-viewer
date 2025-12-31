@@ -9,6 +9,7 @@ class MockWebSocketConnector {
     this.messageHandlers = [];
     this.openHandlers = [];
     this.readyCallbacks = [];
+    this.errorHandlers = [];
     this.connected = false;
   }
 
@@ -30,6 +31,10 @@ class MockWebSocketConnector {
 
   onOpen(handler) {
     this.openHandlers.push(handler);
+  }
+
+  onError(handler) {
+    this.errorHandlers.push(handler);
   }
 
   whenReady(callback) {
@@ -64,6 +69,7 @@ vi.mock('../../workplaces/p2p-console-viewer-lib/src/p2p-connection.js', () => (
       this.answerHandlers = [];
       this.messageHandlers = [];
       this.connectedHandlers = [];
+      this.disconnectedHandlers = [];
     }
 
     onIceCandidate(handler) {
@@ -84,6 +90,10 @@ vi.mock('../../workplaces/p2p-console-viewer-lib/src/p2p-connection.js', () => (
 
     onConnected(handler) {
       this.connectedHandlers.push(handler);
+    }
+
+    onDisconnected(handler) {
+      this.disconnectedHandlers.push(handler);
     }
 
     async initiate() {

@@ -63,11 +63,16 @@ vi.mock('../../workplaces/p2p-console-viewer-lib/src/p2p-connection.js', () => (
     }
 
     async initiate() {
-      return { type: 'offer', sdp: 'mock-offer' };
+      const offer = { type: 'offer', sdp: 'mock-offer' };
+      // Simulate the offer being generated and handlers called
+      this.handlers.offer.forEach(h => h(offer));
+      return offer;
     }
 
     async receiveOffer(offer) {
-      return { type: 'answer', sdp: 'mock-answer' };
+      const answer = { type: 'answer', sdp: 'mock-answer' };
+      this.handlers.answer.forEach(h => h(answer));
+      return answer;
     }
 
     async receiveAnswer(answer) {}
@@ -171,9 +176,7 @@ describe('P2PSignalingClient - Edge Cases', () => {
 
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      await client.initiateP2P('');
-
-      expect(client.peers.has('')).toBe(true);
+      await expect(client.initiateP2P('')).rejects.toThrow('Valid remotePeerId is required');
     });
 
     it('should handle sendMessage to non-existent peer', () => {
@@ -388,6 +391,148 @@ describe('P2PSignalingClient - Edge Cases', () => {
       // Should be different array instances
       expect(peers1).not.toBe(peers2);
       expect(peers1).toEqual(peers2);
+    });
+  });
+
+  describe('error handling', () => {
+    it('should emit error through onError handler', async () => {
+      const client = new P2PSignalingClient('ws://localhost:3000');
+      const errorHandler = vi.fn();
+      client.onError(errorHandler);
+
+      client.connect();
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Trigger a general error
+      client.emitError(new Error('Test error'));
+
+      expect(errorHandler).toHaveBeenCalledWith(expect.any(Error));
+      expect(errorHandler.mock.calls[0][0].message).toBe('Test error');
+    });
+
+    it('should emit peer error through onPeerError handler', async () => {
+      const client = new P2PSignalingClient('ws://localhost:3000');
+      const peerErrorHandler = vi.fn();
+      client.onPeerError(peerErrorHandler);
+
+      client.connect();
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Trigger a peer-specific error
+      client.emitPeerError('peer1', new Error('Peer connection failed'));
+
+      expect(peerErrorHandler).toHaveBeenCalledWith('peer1', expect.any(Error));
+      expect(peerErrorHandler.mock.calls[0][1].message).toBe('Peer connection failed');
+    });
+
+    it('should handle errors in error handlers gracefully', async () => {
+      const client = new P2PSignalingClient('ws://localhost:3000');
+      
+      // Register a bad error handler
+      client.onError(() => {
+        throw new Error('Handler error');
+      });
+
+      // This should not throw
+      expect(() => {
+        client.emitError(new Error('Test error'));
+      }).not.toThrow();
+    });
+
+    it('should handle errors in peer error handlers gracefully', async () => {
+      const client = new P2PSignalingClient('ws://localhost:3000');
+      
+      // Register a bad peer error handler
+      client.onPeerError(() => {
+        throw new Error('Handler error');
+      });
+
+      // This should not throw
+      expect(() => {
+        client.emitPeerError('peer1', new Error('Test error'));
+      }).not.toThrow();
+    });
+
+    it('should handle server error messages', async () => {
+      const client = new P2PSignalingClient('ws://localhost:3000');
+      const errorHandler = vi.fn();
+      client.onError(errorHandler);
+
+      client.connect();
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Simulate server error message
+      const data = JSON.stringify({ type: 'error', message: 'Room not found' });
+      client.ws.handlers.forEach(h => h(data));
+
+      expect(errorHandler).toHaveBeenCalledWith(expect.any(Error));
+      expect(errorHandler.mock.calls[0][0].message).toBe('Room not found');
+    });
+
+    it('should handle invalid peer ID in initiateP2P', async () => {
+      const client = new P2PSignalingClient('ws://localhost:3000');
+      const errorHandler = vi.fn();
+      client.onError(errorHandler);
+
+      client.connect();
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Test with null
+      await expect(client.initiateP2P(null)).rejects.toThrow('Valid remotePeerId is required');
+      
+      // Test with undefined
+      await expect(client.initiateP2P(undefined)).rejects.toThrow('Valid remotePeerId is required');
+      
+      // Test with empty string
+      await expect(client.initiateP2P('')).rejects.toThrow('Valid remotePeerId is required');
+
+      // Error handler should have been called for each
+      expect(errorHandler).toHaveBeenCalledTimes(3);
+    });
+
+    it('should return false from joinRoom with invalid input', async () => {
+      const client = new P2PSignalingClient('ws://localhost:3000');
+      client.connect();
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Test with empty string
+      expect(client.joinRoom('')).toBe(false);
+      
+      // Test with null
+      expect(client.joinRoom(null)).toBe(false);
+      
+      // Test with number
+      expect(client.joinRoom(123)).toBe(false);
+    });
+
+    it('should return false from leaveRoom when not in a room', async () => {
+      const client = new P2PSignalingClient('ws://localhost:3000');
+      client.connect();
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(client.leaveRoom()).toBe(false);
+    });
+
+    it('should handle WebSocket send failures for signaling', async () => {
+      const client = new P2PSignalingClient('ws://localhost:3000');
+      const peerErrorHandler = vi.fn();
+      client.onPeerError(peerErrorHandler);
+
+      client.connect();
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Disconnect WebSocket to make sends fail
+      client.ws.disconnect();
+
+      // Try to initiate P2P - the initiate succeeds but offer send fails
+      await client.initiateP2P('peer1');
+
+      // Wait for the offer handler to execute
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      // Peer error handler should have been called for the failed send
+      expect(peerErrorHandler).toHaveBeenCalledWith('peer1', expect.any(Error));
+      expect(peerErrorHandler.mock.calls[0][1].message).toContain('Failed to send offer');
     });
   });
 });

@@ -56,6 +56,23 @@ export class P2PSignalingClient {
      */
     this.roomPeers = [];
 
+    /**
+     * Error event handlers.
+     * @type {Array<function(Error):void>}
+     */
+    this.onErrorHandlers = [];
+
+    /**
+     * Peer error handlers - called when a specific peer connection fails.
+     * @type {Array<function(string, Error):void>}
+     */
+    this.onPeerErrorHandlers = [];
+
+    // Register WebSocket error handler
+    this.ws.onError((error) => {
+      this.emitError(new Error(`WebSocket error: ${error.message || 'Unknown error'}`));
+    });
+
     // Delay wiring signaling handlers until the WS reports ready.
     this.whenConnected(() => {
       this.setupSignaling();
@@ -111,29 +128,38 @@ export class P2PSignalingClient {
 
     // Forward local ICE candidates for this peer
     p2p.onIceCandidate((candidate) => {
-      this.ws.send({
+      const sent = this.ws.send({
         type: "ice-candidate",
         to: remotePeerId,
         candidate,
       });
+      if (!sent) {
+        console.warn(`Failed to send ICE candidate to ${remotePeerId} - WebSocket not ready`);
+      }
     });
 
     // Forward local offers for this peer
     p2p.onOffer((offer) => {
-      this.ws.send({
+      const sent = this.ws.send({
         type: "offer",
         to: remotePeerId,
         offer,
       });
+      if (!sent) {
+        this.emitPeerError(remotePeerId, new Error('Failed to send offer - WebSocket not ready'));
+      }
     });
 
     // Forward local answers for this peer
     p2p.onAnswer((answer) => {
-      this.ws.send({
+      const sent = this.ws.send({
         type: "answer",
         to: remotePeerId,
         answer,
       });
+      if (!sent) {
+        this.emitPeerError(remotePeerId, new Error('Failed to send answer - WebSocket not ready'));
+      }
     });
 
     // Application-level messages from this peer
@@ -145,6 +171,11 @@ export class P2PSignalingClient {
     // Connection established for this peer
     p2p.onConnected(() => {
       console.log(`P2P connection established with ${remotePeerId}`);
+    });
+
+    // Handle disconnections
+    p2p.onDisconnected(() => {
+      console.log(`P2P connection disconnected from ${remotePeerId}`);
     });
 
     // Store and return
@@ -167,6 +198,7 @@ export class P2PSignalingClient {
    * - { type: "room-peers", peers: ["<peerId1>", "<peerId2>", ...] }
    * - { type: "peer-joined", peerId: "<peerId>" }
    * - { type: "peer-left", peerId: "<peerId>" }
+   * - { type: "error", message: "<errorMessage>" }
    *
    * @param {Object} data - Parsed signaling message.
    * @returns {void}
@@ -180,7 +212,11 @@ export class P2PSignalingClient {
           return;
         }
         const p2p = this.createP2PConnection(from);
-        p2p.receiveOffer(data.offer);
+        // Handle offer asynchronously and catch errors
+        p2p.receiveOffer(data.offer).catch((error) => {
+          console.error(`Failed to receive offer from ${from}:`, error);
+          this.emitPeerError(from, error);
+        });
         break;
       }
 
@@ -192,7 +228,11 @@ export class P2PSignalingClient {
         }
         const p2p = this.peers.get(from);
         if (p2p) {
-          p2p.receiveAnswer(data.answer);
+          // Handle answer asynchronously and catch errors
+          p2p.receiveAnswer(data.answer).catch((error) => {
+            console.error(`Failed to receive answer from ${from}:`, error);
+            this.emitPeerError(from, error);
+          });
         } else {
           console.warn("Received answer for unknown peer:", from);
         }
@@ -207,7 +247,11 @@ export class P2PSignalingClient {
         }
         const p2p = this.peers.get(from);
         if (p2p) {
-          p2p.addIceCandidate(data.candidate);
+          // Handle ICE candidate asynchronously and catch errors
+          p2p.addIceCandidate(data.candidate).catch((error) => {
+            console.error(`Failed to add ICE candidate from ${from}:`, error);
+            // ICE candidate errors are less critical, don't emit peer error
+          });
         } else {
           console.warn("Received ICE candidate for unknown peer:", from);
         }
@@ -257,6 +301,13 @@ export class P2PSignalingClient {
         }
         break;
 
+      case "error":
+        // Server error message
+        const errorMsg = data.message || "Unknown server error";
+        console.error("Server error:", errorMsg);
+        this.emitError(new Error(errorMsg));
+        break;
+
       default:
         console.log("Unknown signaling message:", data);
     }
@@ -275,34 +326,44 @@ export class P2PSignalingClient {
    * Join a room on the signaling server.
    *
    * @param {string} roomName - Name of the room to join.
-   * @returns {void}
+   * @returns {boolean} True if the join request was sent, false otherwise.
    */
   joinRoom(roomName) {
-    if (!roomName) {
-      console.warn("Room name is required to join a room");
-      return;
+    if (!roomName || typeof roomName !== 'string') {
+      console.warn("Valid room name is required to join a room");
+      return false;
     }
-    this.ws.send({
+    const sent = this.ws.send({
       type: "join-room",
       room: roomName,
     });
-    console.log("Requesting to join room:", roomName);
+    if (sent) {
+      console.log("Requesting to join room:", roomName);
+    } else {
+      console.warn("Failed to send join room request - WebSocket not ready");
+    }
+    return sent;
   }
 
   /**
    * Leave the current room on the signaling server.
    *
-   * @returns {void}
+   * @returns {boolean} True if the leave request was sent, false otherwise.
    */
   leaveRoom() {
     if (!this.currentRoom) {
       console.warn("Not currently in a room");
-      return;
+      return false;
     }
-    this.ws.send({
+    const sent = this.ws.send({
       type: "leave-room",
     });
-    console.log("Requesting to leave room:", this.currentRoom);
+    if (sent) {
+      console.log("Requesting to leave room:", this.currentRoom);
+    } else {
+      console.warn("Failed to send leave room request - WebSocket not ready");
+    }
+    return sent;
   }
 
   /**
@@ -321,11 +382,24 @@ export class P2PSignalingClient {
    * typically creates a local SDP offer and returns it.
    *
    * @param {string} remotePeerId - Identifier of the peer to initiate a connection with.
-   * @returns {Promise<Object>} Resolves with the created SDP offer object.
+   * @returns {Promise<Object>} Resolves with the created SDP offer object, or rejects on error.
    */
-  initiateP2P(remotePeerId) {
-    const p2p = this.createP2PConnection(remotePeerId);
-    return p2p.initiate();
+  async initiateP2P(remotePeerId) {
+    if (!remotePeerId || typeof remotePeerId !== 'string') {
+      const error = new Error('Valid remotePeerId is required');
+      this.emitError(error);
+      throw error;
+    }
+
+    try {
+      const p2p = this.createP2PConnection(remotePeerId);
+      const offer = await p2p.initiate();
+      return offer;
+    } catch (error) {
+      console.error(`Failed to initiate P2P connection with ${remotePeerId}:`, error);
+      this.emitPeerError(remotePeerId, error);
+      throw error;
+    }
   }
 
   /**
@@ -403,11 +477,74 @@ export class P2PSignalingClient {
    * Register a callback to be executed when the signaling WebSocket is ready.
    *
    * Delegates to the underlying WebSocketConnector's `whenReady` method.
+   * Wraps the callback to catch and handle errors gracefully.
    *
    * @param {Function} callback - Callback to execute when WS is ready.
    * @returns {void}
    */
   whenConnected(callback) {
-    this.ws.whenReady(callback);
+    this.ws.whenReady(() => {
+      try {
+        callback();
+      } catch (error) {
+        console.error("Error in whenConnected callback:", error);
+        this.emitError(error);
+      }
+    });
+  }
+
+  /**
+   * Register a handler for general errors.
+   *
+   * @param {function(Error):void} handler - Called when an error occurs.
+   * @returns {void}
+   */
+  onError(handler) {
+    this.onErrorHandlers.push(handler);
+  }
+
+  /**
+   * Register a handler for peer-specific errors.
+   *
+   * @param {function(string, Error):void} handler - Called when a peer connection error occurs.
+   * @returns {void}
+   */
+  onPeerError(handler) {
+    this.onPeerErrorHandlers.push(handler);
+  }
+
+  /**
+   * Emit a general error to all registered error handlers.
+   *
+   * @private
+   * @param {Error} error - The error to emit.
+   * @returns {void}
+   */
+  emitError(error) {
+    this.onErrorHandlers.forEach((handler) => {
+      try {
+        handler(error);
+      } catch (e) {
+        console.error("Error in error handler:", e);
+      }
+    });
+  }
+
+  /**
+   * Emit a peer-specific error to all registered peer error handlers.
+   *
+   * @private
+   * @param {string} peerId - The peer ID associated with the error.
+   * @param {Error} error - The error to emit.
+   * @returns {void}
+   */
+  emitPeerError(peerId, error) {
+    this.onPeerErrorHandlers.forEach((handler) => {
+      try {
+        handler(peerId, error);
+      } catch (e) {
+        console.error("Error in peer error handler:", e);
+      }
+    });
   }
 }
