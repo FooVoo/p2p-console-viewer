@@ -7,7 +7,8 @@
   },
   "workspaces": [
     "./workplaces/p2p-console-viewer-console",
-    "./workplaces/p2p-console-viewer-lib"
+    "./workplaces/p2p-console-viewer-lib",
+    "./workplaces/p2p-console-viewer-server"
   ],
   "repository": {
     "type": "git",

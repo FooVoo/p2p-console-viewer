@@ -20,7 +20,8 @@ P2P Console Viewer allows you to view console output from remote applications in
 p2p-console-viewer/
 ├── workplaces/
 │   ├── p2p-console-viewer-lib/      # Core P2P library
-│   └── p2p-console-viewer-console/  # Web console viewer app
+│   ├── p2p-console-viewer-console/  # Web console viewer app
+│   └── p2p-console-viewer-server/   # Signaling server
 ├── package.json                      # Root workspace configuration
 └── README.md                         # This file
 ```
@@ -36,6 +37,7 @@ A lightweight JavaScript library that provides P2P connectivity and console patc
 - WebRTC peer connection management
 - Console method interception
 - Message formatting and transmission utilities
+- Room-based peer discovery
 
 **[View Documentation →](workplaces/p2p-console-viewer-lib/README.md)**
 
@@ -50,6 +52,18 @@ A SvelteKit web application that provides a user interface for viewing remote co
 - Vite
 
 **[View Documentation →](workplaces/p2p-console-viewer-console/README.md)**
+
+### 3. p2p-console-viewer-server
+
+A WebSocket-based signaling server for establishing WebRTC connections with room support.
+
+**Features:**
+- Room-based signaling for isolated P2P connections
+- WebRTC signal routing (offers, answers, ICE candidates)
+- Peer discovery within rooms
+- HTTP status endpoint for monitoring
+
+**[View Documentation →](workplaces/p2p-console-viewer-server/README.md)**
 
 ## 🚦 Getting Started
 
@@ -72,38 +86,50 @@ This will install dependencies for all workspace projects.
 
 ### Quick Start
 
-#### 1. Build the Library
+#### 1. Start the Signaling Server
+
+```bash
+cd workplaces/p2p-console-viewer-server
+npm install
+npm start
+```
+
+The signaling server will be available at `http://localhost:3000`
+
+#### 2. Build the Library
 
 ```bash
 cd workplaces/p2p-console-viewer-lib
 npm run build
 ```
 
-#### 2. Run the Console Viewer
+#### 3. Run the Console Viewer
 
 ```bash
-cd ../p2p-console-viewer-console
+cd workplaces/p2p-console-viewer-console
 npm run dev
 ```
 
 The console viewer will be available at `http://localhost:5173`
 
-#### 3. Integrate into Your Application
+#### 4. Integrate into Your Application
 
 In your application that you want to monitor:
 
 ```javascript
-import { patchConsole, P2PConnection, P2PSignalingClient } from 'p2p-console-viewer-lib';
+import { P2PSignalingClient, patchConsole } from 'p2p-console-viewer-lib';
 
-// Initialize connection
-const signalingClient = new P2PSignalingClient(/* config */);
-const p2pConnection = new P2PConnection(signalingClient);
+// Initialize connection with room support
+const signalingClient = new P2PSignalingClient('ws://localhost:3000', {
+  room: 'my-app-room'
+});
+signalingClient.connect();
 
-// Patch console
-patchConsole(p2pConnection);
+// Patch console to send logs over P2P
+patchConsole(signalingClient);
 
 // Now all console output will be transmitted over P2P
-console.log('This will be visible in the remote viewer! ');
+console.log('This will be visible in the remote viewer!');
 ```
 
 ## 🛠️ Development
