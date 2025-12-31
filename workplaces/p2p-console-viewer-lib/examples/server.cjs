@@ -218,17 +218,6 @@ function broadcastToRoom(message, roomName, exceptId) {
   }
 }
 
-function broadcastExcept(message, exceptId) {
-  for (const [cid, clientInfo] of clients.entries()) {
-    if (cid === exceptId) continue;
-    if (clientInfo.ws.readyState === WebSocket.OPEN) {
-      clientInfo.ws.send(
-        typeof message === "string" ? message : JSON.stringify(message),
-      );
-    }
-  }
-}
-
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
 
