@@ -476,6 +476,83 @@ export class P2PSignalingClient {
   }
 
   /**
+   * Force an immediate reconnection to the signaling server.
+   * Closes all P2P connections and reconnects the WebSocket.
+   *
+   * @returns {void}
+   */
+  forceReconnect() {
+    console.log("Force reconnecting signaling client...");
+    // Close all P2P connections
+    for (const [id, p2p] of this.peers.entries()) {
+      try {
+        p2p.close();
+      } catch (e) {
+        console.warn("Error closing peer connection during reconnect", id, e);
+      }
+    }
+    this.peers.clear();
+    this.currentServerID = null;
+    this.roomPeers = [];
+    
+    // Force WebSocket reconnection
+    this.ws.forceReconnect();
+    
+    // Re-join room if we were in one
+    if (this.currentRoom) {
+      this.whenConnected(() => {
+        this.joinRoom(this.currentRoom);
+      });
+    }
+  }
+
+  /**
+   * Get the current WebSocket connection state.
+   *
+   * @returns {string} One of: 'connecting', 'open', 'closing', 'closed', 'disconnected'
+   */
+  getConnectionState() {
+    return this.ws.getConnectionState();
+  }
+
+  /**
+   * Set the WebSocket reconnection interval.
+   *
+   * @param {number} intervalMs - Milliseconds to wait before reconnecting after close.
+   * @returns {void}
+   */
+  setReconnectInterval(intervalMs) {
+    this.ws.setReconnectInterval(intervalMs);
+  }
+
+  /**
+   * Enable automatic reconnection for the WebSocket.
+   *
+   * @returns {void}
+   */
+  enableAutoReconnect() {
+    this.ws.enableAutoReconnect();
+  }
+
+  /**
+   * Disable automatic reconnection for the WebSocket.
+   *
+   * @returns {void}
+   */
+  disableAutoReconnect() {
+    this.ws.disableAutoReconnect();
+  }
+
+  /**
+   * Check if the WebSocket is currently connected.
+   *
+   * @returns {boolean} True if connected, false otherwise.
+   */
+  isConnected() {
+    return this.ws.isConnected();
+  }
+
+  /**
    * Register a callback to be executed when the signaling WebSocket is ready.
    *
    * Delegates to the underlying WebSocketConnector's `whenReady` method.

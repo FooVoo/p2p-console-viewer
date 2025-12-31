@@ -3,10 +3,29 @@
 	import { parseP2PMessage, serializeP2PMessage } from '$lib/utils/p2p-client';
 	import { P2PSignalingClient } from 'p2p-console-viewer-lib';
 	import { get } from 'svelte/store';
+	import { onMount } from 'svelte';
 
 	const client = new P2PSignalingClient('http://localhost:3000');
 	let inputMessage = '';
 	let isConnected = false;
+	let connectionState = 'disconnected';
+	let autoReconnect = true;
+	let reconnectInterval = 3000;
+	let stateUpdateInterval: number;
+
+	onMount(() => {
+		// Update connection state periodically
+		stateUpdateInterval = setInterval(() => {
+			connectionState = client.getConnectionState();
+			isConnected = client.isConnected();
+		}, 500);
+
+		return () => {
+			if (stateUpdateInterval) {
+				clearInterval(stateUpdateInterval);
+			}
+		};
+	});
 
 	const connect = () => {
 		console.log('connecting...');
@@ -19,6 +38,33 @@
 			const parsedMessage = parseP2PMessage(message, 'inbound');
 			messages.update((msgs) => [...msgs, parsedMessage]);
 		});
+	};
+
+	const disconnect = () => {
+		console.log('Disconnecting...');
+		client.disconnect();
+		isConnected = false;
+		connectionState = 'disconnected';
+	};
+
+	const forceReconnect = () => {
+		console.log('Force reconnecting...');
+		client.forceReconnect();
+	};
+
+	const toggleAutoReconnect = () => {
+		autoReconnect = !autoReconnect;
+		if (autoReconnect) {
+			client.enableAutoReconnect();
+		} else {
+			client.disableAutoReconnect();
+		}
+	};
+
+	const updateReconnectInterval = () => {
+		if (reconnectInterval > 0) {
+			client.setReconnectInterval(reconnectInterval);
+		}
 	};
 
 	const sendMessage = () => {
@@ -55,10 +101,54 @@
 
 <main>
 	<h1>P2P Console Viewer</h1>
-	<div class="controls">
-		<button on:click={connect} disabled={isConnected}>
-			{isConnected ? 'Connected' : 'Connect'}
-		</button>
+	
+	<div class="connection-panel">
+		<div class="connection-status">
+			<span class="status-label">Status:</span>
+			<span class="status-badge {connectionState}">{connectionState}</span>
+		</div>
+		
+		<div class="controls">
+			<button on:click={connect} disabled={isConnected}>
+				Connect
+			</button>
+			<button on:click={disconnect} disabled={!isConnected}>
+				Disconnect
+			</button>
+			<button on:click={forceReconnect}>
+				Force Reconnect
+			</button>
+		</div>
+
+		<div class="advanced-controls">
+			<details>
+				<summary>Advanced Connection Settings</summary>
+				<div class="settings-grid">
+					<div class="setting">
+						<label>
+							<input
+								type="checkbox"
+								checked={autoReconnect}
+								on:change={toggleAutoReconnect}
+							/>
+							Auto-reconnect
+						</label>
+					</div>
+					<div class="setting">
+						<label>
+							Reconnect interval (ms):
+							<input
+								type="number"
+								bind:value={reconnectInterval}
+								on:change={updateReconnectInterval}
+								min="100"
+								step="100"
+							/>
+						</label>
+					</div>
+				</div>
+			</details>
+		</div>
 	</div>
 	
 	<div class="message-input">
@@ -103,8 +193,123 @@
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 	}
 
-	.controls {
+	.connection-panel {
+		background: #f8f9fa;
+		border: 1px solid #dee2e6;
+		border-radius: 8px;
+		padding: 16px;
 		margin-bottom: 20px;
+	}
+
+	.connection-status {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-bottom: 12px;
+	}
+
+	.status-label {
+		font-weight: 600;
+		color: #495057;
+	}
+
+	.status-badge {
+		padding: 4px 12px;
+		border-radius: 12px;
+		font-size: 12px;
+		font-weight: 600;
+		text-transform: uppercase;
+	}
+
+	.status-badge.disconnected {
+		background: #e9ecef;
+		color: #6c757d;
+	}
+
+	.status-badge.connecting {
+		background: #fff3cd;
+		color: #856404;
+		animation: pulse 1.5s infinite;
+	}
+
+	.status-badge.open {
+		background: #d1e7dd;
+		color: #0f5132;
+	}
+
+	.status-badge.closing {
+		background: #f8d7da;
+		color: #842029;
+	}
+
+	.status-badge.closed {
+		background: #e9ecef;
+		color: #6c757d;
+	}
+
+	@keyframes pulse {
+		0%, 100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.6;
+		}
+	}
+
+	.controls {
+		display: flex;
+		gap: 8px;
+		margin-bottom: 12px;
+		flex-wrap: wrap;
+	}
+
+	.advanced-controls {
+		margin-top: 12px;
+	}
+
+	.advanced-controls details {
+		background: white;
+		border: 1px solid #dee2e6;
+		border-radius: 4px;
+		padding: 8px;
+	}
+
+	.advanced-controls summary {
+		cursor: pointer;
+		font-weight: 500;
+		color: #495057;
+		user-select: none;
+	}
+
+	.advanced-controls summary:hover {
+		color: #0066cc;
+	}
+
+	.settings-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+		gap: 12px;
+		margin-top: 12px;
+	}
+
+	.setting label {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 14px;
+		color: #495057;
+	}
+
+	.setting input[type="checkbox"] {
+		cursor: pointer;
+	}
+
+	.setting input[type="number"] {
+		padding: 4px 8px;
+		border: 1px solid #ced4da;
+		border-radius: 4px;
+		font-size: 14px;
+		width: 100px;
 	}
 
 	button {
@@ -114,10 +319,12 @@
 		border: 1px solid #ccc;
 		background: white;
 		border-radius: 4px;
+		transition: all 0.2s;
 	}
 
 	button:hover:not(:disabled) {
 		background: #f0f0f0;
+		border-color: #999;
 	}
 
 	button:disabled {
