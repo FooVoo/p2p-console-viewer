@@ -243,6 +243,85 @@ class WebSocketConnector {
   }
 
   /**
+   * Force an immediate reconnection.
+   * Closes the current connection (if any) and immediately attempts to reconnect.
+   * Useful for manual retry or recovering from error states.
+   *
+   * @returns {void}
+   */
+  forceReconnect() {
+    console.log("Forcing reconnection...");
+    // Close existing connection without triggering auto-reconnect
+    if (this.ws) {
+      // Temporarily disable auto-reconnect to prevent double-reconnect
+      const previousShouldReconnect = this.shouldReconnect;
+      this.shouldReconnect = false;
+      this.ws.close();
+      this.shouldReconnect = previousShouldReconnect;
+    }
+    // Immediately reconnect
+    this.connect();
+  }
+
+  /**
+   * Get the current connection state.
+   *
+   * @returns {string} One of: 'connecting', 'open', 'closing', 'closed', 'disconnected'
+   */
+  getConnectionState() {
+    if (!this.ws) {
+      return 'disconnected';
+    }
+    switch (this.ws.readyState) {
+      case WebSocket.CONNECTING:
+        return 'connecting';
+      case WebSocket.OPEN:
+        return 'open';
+      case WebSocket.CLOSING:
+        return 'closing';
+      case WebSocket.CLOSED:
+        return 'closed';
+      default:
+        return 'disconnected';
+    }
+  }
+
+  /**
+   * Set the reconnection interval.
+   *
+   * @param {number} intervalMs - Milliseconds to wait before reconnecting after close.
+   * @returns {void}
+   */
+  setReconnectInterval(intervalMs) {
+    if (intervalMs > 0) {
+      this.reconnectInterval = intervalMs;
+      console.log(`Reconnect interval set to ${intervalMs}ms`);
+    } else {
+      console.warn("Reconnect interval must be positive, keeping current value");
+    }
+  }
+
+  /**
+   * Enable automatic reconnection after connection closes.
+   *
+   * @returns {void}
+   */
+  enableAutoReconnect() {
+    this.shouldReconnect = true;
+    console.log("Auto-reconnect enabled");
+  }
+
+  /**
+   * Disable automatic reconnection after connection closes.
+   *
+   * @returns {void}
+   */
+  disableAutoReconnect() {
+    this.shouldReconnect = false;
+    console.log("Auto-reconnect disabled");
+  }
+
+  /**
    * Check whether the underlying WebSocket is currently open.
    *
    * @returns {boolean} True when connected and readyState is WebSocket.OPEN.

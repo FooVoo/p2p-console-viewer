@@ -1,0 +1,25 @@
+{
+  "name": "p2p-console-viewer-server",
+  "version": "1.0.0",
+  "description": "WebSocket-based signaling server for P2P Console Viewer with room support",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "webrtc",
+    "signaling",
+    "websocket",
+    "p2p",
+    "rooms"
+  ],
+  "author": "FooVoo",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1",
+    "ws": "^8.18.3",
+    "uuid": "^13.0.0"
+  }
+}

@@ -3,7 +3,6 @@ const http = require("http");
 const WebSocket = require("ws");
 const os = require("os");
 const uuid = require("uuid");
-// const cors = require('cors');
 
 const app = express();
 const server = http.createServer(app);
@@ -13,11 +12,10 @@ let nextClientId = 1;
 const clients = new Map(); // id -> { ws, room, id }
 const rooms = new Map(); // room -> Set<clientId>
 
-// app.use(cors({origin: '*'}));
 app.use(express.json());
 
 app.get("/status", (req, res) => {
-  console.log("Status Code: " + req.url);
+  console.log("Status request from:", req.socket.remoteAddress);
   const roomsInfo = {};
   for (const [roomName, clientIds] of rooms.entries()) {
     roomsInfo[roomName] = Array.from(clientIds);
@@ -240,5 +238,5 @@ server.listen(PORT, HOST, () => {
   console.log(
     `Accessible on LAN at: http://${lanIp}:${PORT}   ws://${lanIp}:${PORT}`,
   );
-  console.log(`GET /status to see connected clients`);
+  console.log(`GET /status to see connected clients and rooms`);
 });
