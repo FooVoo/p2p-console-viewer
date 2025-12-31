@@ -8,7 +8,7 @@ Enhanced the `P2PSignalingClient` class to gracefully handle errors and provide 
 ### 1. Error Event System
 Added two types of error handlers:
 - **`onError(handler)`**: General errors (WebSocket errors, server errors, validation errors)
-- **`onPeerError(handler, peerId)`**: Peer-specific connection errors
+- **`onPeerError(handler)`**: Peer-specific connection errors, where handler receives `(peerId, error)` parameters
 
 ```javascript
 const client = new P2PSignalingClient('ws://localhost:3000');

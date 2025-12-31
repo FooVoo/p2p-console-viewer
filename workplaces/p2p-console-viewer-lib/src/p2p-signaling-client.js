@@ -64,6 +64,8 @@ export class P2PSignalingClient {
 
     /**
      * Peer error handlers - called when a specific peer connection fails.
+     * Examples: connection establishment failures, offer/answer processing errors,
+     * WebSocket send failures for signaling messages.
      * @type {Array<function(string, Error):void>}
      */
     this.onPeerErrorHandlers = [];
@@ -329,7 +331,7 @@ export class P2PSignalingClient {
    * @returns {boolean} True if the join request was sent, false otherwise.
    */
   joinRoom(roomName) {
-    if (!roomName || typeof roomName !== 'string') {
+    if (!roomName || typeof roomName !== 'string' || roomName.trim() === '') {
       console.warn("Valid room name is required to join a room");
       return false;
     }
@@ -385,7 +387,7 @@ export class P2PSignalingClient {
    * @returns {Promise<Object>} Resolves with the created SDP offer object, or rejects on error.
    */
   async initiateP2P(remotePeerId) {
-    if (!remotePeerId || typeof remotePeerId !== 'string') {
+    if (!remotePeerId || typeof remotePeerId !== 'string' || remotePeerId.trim() === '') {
       const error = new Error('Valid remotePeerId is required');
       this.emitError(error);
       throw error;
