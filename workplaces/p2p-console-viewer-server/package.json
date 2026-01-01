@@ -6,7 +6,9 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "format": "prettier --write .",
+    "lint": "prettier --check . && eslint ."
   },
   "keywords": [
     "webrtc",
@@ -22,5 +24,12 @@
     "express": "^5.2.1",
     "uuid": "^13.0.0",
     "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.5.0",
+    "prettier": "^3.7.4"
   }
 }
