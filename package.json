@@ -5,7 +5,11 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "format": "prettier --write . --ignore-path .prettierignore",
+    "format:all": "npm run format && npm run format --workspaces --if-present",
+    "lint": "prettier --check . --ignore-path .prettierignore && eslint .",
+    "lint:all": "npm run lint && npm run lint --workspaces --if-present"
   },
   "workspaces": [
     "./workplaces/p2p-console-viewer-console",
@@ -23,8 +27,15 @@
   },
   "homepage": "https://github.com/FooVoo/p2p-console-viewer#readme",
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@vitest/coverage-v8": "^2.1.8",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.5.0",
+    "prettier": "^3.7.4",
+    "prettier-plugin-svelte": "^3.4.1",
+    "prettier-plugin-tailwindcss": "^0.7.2",
     "vite": "^7.2.4",
-    "vitest": "^2.1.8",
-    "@vitest/coverage-v8": "^2.1.8"
+    "vitest": "^2.1.8"
   }
 }
