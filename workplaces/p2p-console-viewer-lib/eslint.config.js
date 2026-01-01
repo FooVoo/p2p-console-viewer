@@ -1,4 +1,5 @@
 import rootConfig from '../../eslint.config.js';
+import globals from 'globals';
 
 export default [
 	// Extend root configuration
@@ -6,7 +7,10 @@ export default [
 	{
 		files: ['src/**/*.js'],
 		languageOptions: {
-			sourceType: 'module'
+			sourceType: 'module',
+			globals: {
+				...globals.browser
+			}
 		}
 	},
 	{
