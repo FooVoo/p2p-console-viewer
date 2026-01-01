@@ -1,0 +1,35 @@
+{
+  "name": "p2p-console-viewer-server",
+  "version": "1.0.0",
+  "description": "WebSocket-based signaling server for P2P Console Viewer with room support",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "format": "prettier --write .",
+    "lint": "prettier --check . && eslint ."
+  },
+  "keywords": [
+    "webrtc",
+    "signaling",
+    "websocket",
+    "p2p",
+    "rooms"
+  ],
+  "author": "FooVoo",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "uuid": "^13.0.0",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.5.0",
+    "prettier": "^3.7.4"
+  }
+}

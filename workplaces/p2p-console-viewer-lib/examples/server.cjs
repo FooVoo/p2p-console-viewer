@@ -9,21 +9,29 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-const clients = new Map(); // id -> ws
+let nextClientId = 1;
+const clients = new Map(); // id -> { ws, room, id }
+const rooms = new Map(); // room -> Set<clientId>
 
 // app.use(cors({origin: '*'}));
 app.use(express.json());
 
 app.get("/status", (req, res) => {
   console.log("Status Code: " + req.url);
+  const roomsInfo = {};
+  for (const [roomName, clientIds] of rooms.entries()) {
+    roomsInfo[roomName] = Array.from(clientIds);
+  }
   res.json({
+    totalClients: clients.size,
     clients: Array.from(clients.keys()),
+    rooms: roomsInfo,
   });
 });
 
 wss.on("connection", (ws, req) => {
   const id = uuid.v4();
-  clients.set(id, ws);
+  clients.set(id, { ws, room: null, id });
   console.log(`Client connected: ${id} (${req.socket.remoteAddress})`);
 
   // Send assigned id to client
@@ -38,41 +46,67 @@ wss.on("connection", (ws, req) => {
     try {
       parsed = JSON.parse(msg);
     } catch (e) {
-      // simple broadcast of raw message
-      broadcastExcept(raw, id);
+      // simple broadcast of raw message within the room
+      const clientInfo = clients.get(id);
+      if (clientInfo && clientInfo.room) {
+        broadcastToRoom(raw, clientInfo.room, id);
+      }
+      return;
+    }
+
+    // Handle room join/leave
+    if (parsed.type === "join-room") {
+      handleJoinRoom(id, parsed.room);
+      return;
+    }
+
+    if (parsed.type === "leave-room") {
+      handleLeaveRoom(id);
       return;
     }
 
     // Expected signaling message shape: { type, to?, data? }
     const target = parsed.to;
+    const clientInfo = clients.get(id);
+
     if (target) {
-      const targetWs = clients.get(String(target));
-      if (targetWs && targetWs.readyState === WebSocket.OPEN) {
+      const targetInfo = clients.get(String(target));
+      // Check if target is in same room
+      if (
+        targetInfo &&
+        targetInfo.ws.readyState === WebSocket.OPEN &&
+        clientInfo.room &&
+        targetInfo.room === clientInfo.room
+      ) {
         // include from so recipients know the sender id
         const forward = Object.assign({}, parsed, { from: id });
-        targetWs.send(JSON.stringify(forward));
+        targetInfo.ws.send(JSON.stringify(forward));
       } else {
-        // Optionally notify sender that target is unavailable
+        // Optionally notify sender that target is unavailable or not in same room
         ws.send(
           JSON.stringify({
             type: "error",
-            message: "target-unavailable",
+            message: "target-unavailable-or-different-room",
             to: target,
           }),
         );
       }
     } else {
-      // broadcast to others
-      const forward = Object.assign({}, parsed, { from: id });
-      broadcastExcept(JSON.stringify(forward), id);
+      // broadcast to others in the same room
+      if (clientInfo && clientInfo.room) {
+        const forward = Object.assign({}, parsed, { from: id });
+        broadcastToRoom(JSON.stringify(forward), clientInfo.room, id);
+      }
     }
   });
 
   ws.on("close", (code, reason) => {
+    const clientInfo = clients.get(id);
+    if (clientInfo && clientInfo.room) {
+      handleLeaveRoom(id);
+    }
     clients.delete(id);
     console.log(`Client disconnected: ${id} (${code})`);
-    // Notify remaining clients that this peer left
-    broadcastExcept(JSON.stringify({ type: "peer-left", id }), id);
   });
 
   ws.on("error", (err) => {
@@ -80,11 +114,104 @@ wss.on("connection", (ws, req) => {
   });
 });
 
-function broadcastExcept(message, exceptId) {
-  for (const [cid, clientWs] of clients.entries()) {
-    if (cid === exceptId) continue;
-    if (clientWs.readyState === WebSocket.OPEN) {
-      clientWs.send(
+function handleJoinRoom(clientId, roomName) {
+  const clientInfo = clients.get(clientId);
+  if (!clientInfo) return;
+
+  // Leave current room if in one
+  if (clientInfo.room) {
+    handleLeaveRoom(clientId);
+  }
+
+  // Join new room
+  clientInfo.room = roomName;
+  if (!rooms.has(roomName)) {
+    rooms.set(roomName, new Set());
+  }
+  rooms.get(roomName).add(clientId);
+
+  console.log(`Client ${clientId} joined room: ${roomName}`);
+
+  // Send confirmation to client
+  clientInfo.ws.send(
+    JSON.stringify({
+      type: "room-joined",
+      room: roomName,
+    }),
+  );
+
+  // Notify others in room about new peer
+  broadcastToRoom(
+    JSON.stringify({
+      type: "peer-joined",
+      peerId: clientId,
+    }),
+    roomName,
+    clientId,
+  );
+
+  // Send list of existing peers in room to the new client
+  const roomClients = Array.from(rooms.get(roomName)).filter(
+    (id) => id !== clientId,
+  );
+  clientInfo.ws.send(
+    JSON.stringify({
+      type: "room-peers",
+      peers: roomClients,
+    }),
+  );
+}
+
+function handleLeaveRoom(clientId) {
+  const clientInfo = clients.get(clientId);
+  if (!clientInfo || !clientInfo.room) return;
+
+  const roomName = clientInfo.room;
+  const room = rooms.get(roomName);
+
+  if (room) {
+    room.delete(clientId);
+
+    // Notify others in room that peer left
+    broadcastToRoom(
+      JSON.stringify({
+        type: "peer-left",
+        peerId: clientId,
+      }),
+      roomName,
+      clientId,
+    );
+
+    // Clean up empty rooms
+    if (room.size === 0) {
+      rooms.delete(roomName);
+      console.log(`Room ${roomName} is now empty and removed`);
+    }
+  }
+
+  clientInfo.room = null;
+  console.log(`Client ${clientId} left room: ${roomName}`);
+
+  // Send confirmation to client if still connected
+  if (clientInfo.ws.readyState === WebSocket.OPEN) {
+    clientInfo.ws.send(
+      JSON.stringify({
+        type: "room-left",
+        room: roomName,
+      }),
+    );
+  }
+}
+
+function broadcastToRoom(message, roomName, exceptId) {
+  const room = rooms.get(roomName);
+  if (!room) return;
+
+  for (const clientId of room) {
+    if (clientId === exceptId) continue;
+    const clientInfo = clients.get(clientId);
+    if (clientInfo && clientInfo.ws.readyState === WebSocket.OPEN) {
+      clientInfo.ws.send(
         typeof message === "string" ? message : JSON.stringify(message),
       );
     }
