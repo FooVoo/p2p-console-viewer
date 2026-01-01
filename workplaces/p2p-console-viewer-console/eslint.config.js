@@ -12,8 +12,6 @@ import rootConfig from '../../eslint.config.js';
 const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
 
 export default defineConfig(
-	// Extend root configuration
-	...rootConfig,
 	includeIgnoreFile(gitignorePath),
 	js.configs.recommended,
 	...ts.configs.recommended,
@@ -40,5 +38,7 @@ export default defineConfig(
 				svelteConfig
 			}
 		}
-	}
+	},
+	// Extend root configuration last to ensure root rules take precedence
+	...rootConfig
 );
