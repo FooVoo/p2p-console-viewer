@@ -9,10 +9,13 @@ P2P Console Viewer allows you to view console output from remote applications in
 ### Key Features
 
 - **True Peer-to-Peer**: Direct WebRTC connections between peers, no intermediary servers needed (except for initial signaling)
-- **Real-time Console Streaming**: Intercepts and transmits console. log, console.warn, console.error, etc.
+- **Room-based Isolation**: Group peers into rooms for organized multi-peer coordination
+- **Real-time Console Streaming**: Intercepts and transmits console.log, console.warn, console.error, etc.
+- **Graceful Error Handling**: Comprehensive error handling system with custom error handlers
 - **Modern Web UI**: Built with Svelte 5 and Tailwind CSS for a responsive viewing experience
-- **TypeScript Support**:  Full type definitions for the library
-- **Monorepo Structure**: Organized workspaces for library and application
+- **TypeScript Support**: Full type definitions for the library
+- **Comprehensive Test Suite**: 250 tests with Vitest providing complete coverage
+- **Monorepo Structure**: Organized workspaces for library, server, and application
 
 ## 📦 Repository Structure
 
@@ -20,8 +23,13 @@ P2P Console Viewer allows you to view console output from remote applications in
 p2p-console-viewer/
 ├── workplaces/
 │   ├── p2p-console-viewer-lib/      # Core P2P library
-│   └── p2p-console-viewer-console/  # Web console viewer app
+│   ├── p2p-console-viewer-console/  # Web console viewer app
+│   └── p2p-console-viewer-server/   # Signaling server
+├── test/                             # Centralized test suite (250 tests)
+│   ├── lib/                          # Library tests (201 tests)
+│   └── server/                       # Server tests (49 tests)
 ├── package.json                      # Root workspace configuration
+├── vitest.config.js                  # Unified test configuration
 └── README.md                         # This file
 ```
 
@@ -36,6 +44,9 @@ A lightweight JavaScript library that provides P2P connectivity and console patc
 - WebRTC peer connection management
 - Console method interception
 - Message formatting and transmission utilities
+- Room-based peer discovery and isolation
+- Graceful error handling with custom error handlers
+- Comprehensive test coverage (201 tests)
 
 **[View Documentation →](workplaces/p2p-console-viewer-lib/README.md)**
 
@@ -50,6 +61,20 @@ A SvelteKit web application that provides a user interface for viewing remote co
 - Vite
 
 **[View Documentation →](workplaces/p2p-console-viewer-console/README.md)**
+
+### 3. p2p-console-viewer-server
+
+A WebSocket-based signaling server for establishing WebRTC connections with room support.
+
+**Features:**
+- Room-based signaling for isolated P2P connections
+- WebRTC signal routing (offers, answers, ICE candidates)
+- Peer discovery within rooms
+- Auto-cleanup of empty rooms
+- HTTP status endpoint for monitoring
+- Comprehensive test coverage (49 tests)
+
+**[View Documentation →](workplaces/p2p-console-viewer-server/README.md)**
 
 ## 🚦 Getting Started
 
@@ -72,38 +97,60 @@ This will install dependencies for all workspace projects.
 
 ### Quick Start
 
-#### 1. Build the Library
+#### 1. Start the Signaling Server
+
+```bash
+cd workplaces/p2p-console-viewer-server
+npm install
+npm start
+```
+
+The signaling server will be available at `http://localhost:3000`
+
+#### 2. Build the Library
 
 ```bash
 cd workplaces/p2p-console-viewer-lib
 npm run build
 ```
 
-#### 2. Run the Console Viewer
+#### 3. Run the Console Viewer
 
 ```bash
-cd ../p2p-console-viewer-console
+cd workplaces/p2p-console-viewer-console
 npm run dev
 ```
 
 The console viewer will be available at `http://localhost:5173`
 
-#### 3. Integrate into Your Application
+#### 4. Integrate into Your Application
 
 In your application that you want to monitor:
 
 ```javascript
-import { patchConsole, P2PConnection, P2PSignalingClient } from 'p2p-console-viewer-lib';
+import { P2PSignalingClient, patchConsole } from 'p2p-console-viewer-lib';
 
-// Initialize connection
-const signalingClient = new P2PSignalingClient(/* config */);
-const p2pConnection = new P2PConnection(signalingClient);
+// Initialize connection with room support
+const signalingClient = new P2PSignalingClient('ws://localhost:3000', {
+  room: 'my-app-room'
+});
 
-// Patch console
-patchConsole(p2pConnection);
+// Set up error handlers for graceful error handling
+signalingClient.onError((error) => {
+  console.error('Client error:', error.message);
+});
+
+signalingClient.onPeerError((peerId, error) => {
+  console.error(`Error with peer ${peerId}:`, error.message);
+});
+
+signalingClient.connect();
+
+// Patch console to send logs over P2P
+patchConsole(signalingClient);
 
 // Now all console output will be transmitted over P2P
-console.log('This will be visible in the remote viewer! ');
+console.log('This will be visible in the remote viewer!');
 ```
 
 ## 🛠️ Development
@@ -121,6 +168,15 @@ npm run build --workspace=p2p-console-viewer-lib
 
 # Install dependencies for all workspaces
 npm install
+
+# Run tests (from root)
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Generate test coverage report
+npm run test:coverage
 ```
 
 ### Project-Specific Commands
@@ -141,6 +197,18 @@ npm run build   # Production build
 npm run preview # Preview production build
 npm run lint    # Lint and format check
 npm run format  # Format code
+```
+
+**p2p-console-viewer-server:**
+```bash
+npm start       # Start signaling server (default: port 3000)
+```
+
+**Root-level test commands:**
+```bash
+npm test            # Run all tests (250 tests)
+npm run test:watch  # Run tests in watch mode
+npm run test:coverage # Generate coverage report
 ```
 
 ## 🏛️ Architecture
