@@ -70,6 +70,13 @@ export class P2PSignalingClient {
      */
     this.onPeerErrorHandlers = [];
 
+    /**
+     * Handlers invoked when any connected peer sends an application-level
+     * message over the P2P data channel.
+     * @type {Array<function(string, string):void>}
+     */
+    this.onPeerMessageHandlers = [];
+
     // Register WebSocket error handler
     this.ws.onError((error) => {
       this.emitError(new Error(`WebSocket error: ${error.message || 'Unknown error'}`));
@@ -166,8 +173,13 @@ export class P2PSignalingClient {
 
     // Application-level messages from this peer
     p2p.onMessage((message) => {
-      console.log(`P2P message received from ${remotePeerId}:`, message);
-      // Application logic can be added here or p2p can expose events upward.
+      this.onPeerMessageHandlers.forEach((h) => {
+        try {
+          h(remotePeerId, message);
+        } catch (e) {
+          console.error(`Error in peer message handler for ${remotePeerId}:`, e);
+        }
+      });
     });
 
     // Connection established for this peer
@@ -591,6 +603,17 @@ export class P2PSignalingClient {
    */
   onPeerError(handler) {
     this.onPeerErrorHandlers.push(handler);
+  }
+
+  /**
+   * Register a handler invoked whenever any connected peer sends an
+   * application-level message over the P2P data channel.
+   *
+   * @param {function(string, string):void} handler - Called with (peerId, rawMessage).
+   * @returns {void}
+   */
+  onPeerMessage(handler) {
+    this.onPeerMessageHandlers.push(handler);
   }
 
   /**
