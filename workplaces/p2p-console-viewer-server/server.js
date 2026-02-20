@@ -7,18 +7,20 @@ const WebSocket = require("ws");
 const os = require("os");
 const {v4: uuidv4} = require("uuid");
 
+const {
+  MAX_PAYLOAD,
+  MAX_CLIENTS,
+  MAX_ROOM_CLIENTS,
+  MESSAGE_RATE_PER_SEC,
+  MESSAGE_BURST,
+  HEARTBEAT_INTERVAL,
+  WS_SECRET,
+  ALLOWED_ORIGINS,
+} = require("./lib/guardrails.js");
+const { isValidRoomName, rateAllow } = require("./lib/validation.js");
+
 const app = express();
 const server = http.createServer(app);
-
-// Guardrail config (env overrides)
-const MAX_PAYLOAD = parseInt(process.env.MAX_PAYLOAD || String(64 * 1024), 10); // bytes
-const MAX_CLIENTS = parseInt(process.env.MAX_CLIENTS || "1000", 10);
-const MAX_ROOM_CLIENTS = parseInt(process.env.MAX_ROOM_CLIENTS || "50", 10);
-const MESSAGE_RATE_PER_SEC = parseFloat(process.env.MESSAGE_RATE_PER_SEC || "10"); // tokens/sec
-const MESSAGE_BURST = parseFloat(process.env.MESSAGE_BURST || "20"); // burst tokens
-const HEARTBEAT_INTERVAL = parseInt(process.env.HEARTBEAT_INTERVAL || "30000", 10); // ms
-const WS_SECRET = process.env.WS_SECRET || ""; // set to enable simple auth
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean); // optional
 
 
 const wss = new WebSocket.Server({server, maxPayload: MAX_PAYLOAD});
@@ -52,22 +54,6 @@ function safeSend(ws, payload) {
     }
     console.error("Failed to send to client:", err && err.message);
   }
-}
-
-function isValidRoomName(name) {
-  return typeof name === "string" && /^[A-Za-z0-9\-_]{1,64}$/.test(name);
-}
-
-function rateAllow(rate) {
-  const now = Date.now();
-  const elapsed = Math.max(0, (now - rate.last) / 1000);
-  rate.tokens = Math.min(MESSAGE_BURST, rate.tokens + elapsed * MESSAGE_RATE_PER_SEC);
-  rate.last = now;
-  if (rate.tokens >= 1) {
-    rate.tokens -= 1;
-    return true;
-  }
-  return false;
 }
 
 wss.on("connection", (ws, req) => {
@@ -126,7 +112,7 @@ wss.on("connection", (ws, req) => {
     // basic rate limiting
     const clientInfo = clients.get(id);
     if (!clientInfo) return;
-    if (!rateAllow(clientInfo.rate)) {
+    if (!rateAllow(clientInfo.rate, MESSAGE_BURST, MESSAGE_RATE_PER_SEC)) {
       safeSend(ws, JSON.stringify({type: "error", message: "rate-limit"}));
       return;
     }
