@@ -4,7 +4,7 @@ export default [
 	// Extend root configuration
 	...rootConfig,
 	{
-		files: ['*.js'],
+		files: ['**/*.js'],
 		languageOptions: {
 			sourceType: 'commonjs',
 			globals: {
