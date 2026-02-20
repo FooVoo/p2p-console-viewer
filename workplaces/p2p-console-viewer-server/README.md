@@ -269,6 +269,12 @@ ws.onmessage = (event) => {
 
 ISC
 
+## Deploying to Vercel
+
+The server includes a REST-based signaling API (`api/` directory) designed for Vercel serverless functions. However, each serverless function runs in its own isolated process, so the default in-memory `RoomManager` is **not shared** across function invocations.
+
+For production deployments, replace the in-memory state with a persistent store such as Vercel KV (Redis). See the [Vercel KV Setup Guide](../../doc/vercel-kv-setup.md) for step-by-step instructions.
+
 ## Related Projects
 
 - [p2p-console-viewer-lib](../p2p-console-viewer-lib) - Client library for P2P connections

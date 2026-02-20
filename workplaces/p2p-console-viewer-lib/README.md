@@ -8,7 +8,7 @@ A JavaScript library for establishing peer-to-peer connections and viewing conso
 
 ## Version
 
-Current version: **0.0.3**
+Current version: **0.0.6**
 
 ## Features
 
@@ -117,6 +117,41 @@ client.whenConnected(() => {
 });
 ```
 
+### High-Level Console Forwarding
+
+The `ConsoleP2PClient` wraps signaling, console interception, and structured message handling into a single class:
+
+```javascript
+import { ConsoleP2PClient } from 'p2p-console-viewer-lib';
+
+// Sender: forward console output to remote peers
+const sender = new ConsoleP2PClient('ws://localhost:3000', {
+  room: 'debug-room',
+  namespace: 'my-service'
+});
+sender.connect();
+sender.start();  // patches the global console
+
+console.log('This is forwarded to all peers in "debug-room"');
+
+sender.stop();       // restore original console
+sender.disconnect();
+```
+
+```javascript
+// Viewer: receive and display remote console output
+const viewer = new ConsoleP2PClient('ws://localhost:3000', {
+  room: 'debug-room'
+});
+
+viewer.onConsoleMessage((peerId, msg) => {
+  // msg: { id, level, namespace, timestamp, payload, text }
+  console.log(`[${msg.level}] from ${peerId}:`, msg.text);
+});
+
+viewer.connect();
+```
+
 ## Project Structure
 
 ```
@@ -136,7 +171,7 @@ workplaces/p2p-console-viewer-lib/
 └── index.html                     # Demo page
 
 # Tests are located in the root test/ directory
-../../test/lib/                    # 221 comprehensive tests
+../../test/lib/                    # 201 comprehensive tests
 ├── websocket-connector.test.js
 ├── websocket-connector-edge-cases.test.js
 ├── p2p-signaling-client.test.js
