@@ -14,7 +14,7 @@ P2P Console Viewer allows you to view console output from remote applications in
 - **Graceful Error Handling**: Comprehensive error handling system with custom error handlers
 - **Modern Web UI**: Built with Svelte 5 and Tailwind CSS for a responsive viewing experience
 - **TypeScript Support**: Full type definitions for the library
-- **Comprehensive Test Suite**: 250 tests with Vitest providing complete coverage
+- **Comprehensive Test Suite**: 280 tests with Vitest providing complete coverage
 - **Monorepo Structure**: Organized workspaces for library, server, and application
 
 ## 📦 Repository Structure
@@ -25,9 +25,11 @@ p2p-console-viewer/
 │   ├── p2p-console-viewer-lib/      # Core P2P library
 │   ├── p2p-console-viewer-console/  # Web console viewer app
 │   └── p2p-console-viewer-server/   # Signaling server
-├── test/                             # Centralized test suite (250 tests)
+├── test/                             # Centralized test suite (280 tests)
 │   ├── lib/                          # Library tests (201 tests)
-│   └── server/                       # Server tests (49 tests)
+│   ├── server/                       # Server tests (49 tests)
+│   └── console/                      # Console viewer tests (30 tests)
+├── doc/                              # Architecture and setup documentation
 ├── package.json                      # Root workspace configuration
 ├── vitest.config.js                  # Unified test configuration
 └── README.md                         # This file
@@ -71,10 +73,13 @@ A WebSocket-based signaling server for establishing WebRTC connections with room
 - WebRTC signal routing (offers, answers, ICE candidates)
 - Peer discovery within rooms
 - Auto-cleanup of empty rooms
+- REST API for Vercel serverless deployment
 - HTTP status endpoint for monitoring
 - Comprehensive test coverage (49 tests)
 
 **[View Documentation →](workplaces/p2p-console-viewer-server/README.md)**
+
+> **Production Note:** The serverless REST API uses in-memory state by default, which is not shared across Vercel function invocations. See the [Vercel KV Setup Guide](doc/vercel-kv-setup.md) for instructions on replacing it with a persistent Redis-backed store.
 
 ## 🚦 Getting Started
 
@@ -153,6 +158,42 @@ patchConsole(signalingClient);
 console.log('This will be visible in the remote viewer!');
 ```
 
+#### Alternative: High-Level `ConsoleP2PClient`
+
+For a simpler API, use the `ConsoleP2PClient` wrapper which combines signaling, console patching, and message handling in one class:
+
+```javascript
+import { ConsoleP2PClient } from 'p2p-console-viewer-lib';
+
+// Sending side — the app whose console you want to forward
+const client = new ConsoleP2PClient('ws://localhost:3000', {
+  room: 'my-room',
+  namespace: 'my-app'   // optional tag to identify the source
+});
+
+client.connect();
+client.start();  // patches the global console
+
+// Every console.log / warn / error is now forwarded to connected peers
+console.log('Hello from my application!');
+console.warn('Something looks off…');
+
+// When done:
+client.stop();       // restores original console
+client.disconnect();
+```
+
+```javascript
+// Viewing side — receives and displays remote console output
+const viewer = new ConsoleP2PClient('ws://localhost:3000', { room: 'my-room' });
+
+viewer.onConsoleMessage((peerId, msg) => {
+  console.log(`[${msg.level}] from ${peerId}:`, msg.text);
+});
+
+viewer.connect();
+```
+
 ## 🛠️ Development
 
 ### Workspace Commands
@@ -206,7 +247,7 @@ npm start       # Start signaling server (default: port 3000)
 
 **Root-level test commands:**
 ```bash
-npm test            # Run all tests (250 tests)
+npm test            # Run all tests (280 tests)
 npm run test:watch  # Run tests in watch mode
 npm run test:coverage # Generate coverage report
 ```
@@ -263,7 +304,8 @@ Report issues on the [GitHub Issues page](https://github.com/FooVoo/p2p-console-
 
 - **WebRTC Documentation**: [webrtc.org](https://webrtc.org/)
 - **SvelteKit Docs**: [kit.svelte.dev](https://kit.svelte.dev/)
-- **P2P Flow Chart**: [View Architecture Diagram](workplaces/doc/p2p-flow-chart.md)
+- **P2P Flow Chart**: [View Architecture Diagram](doc/p2p-flow-chart.md)
+- **Vercel KV Setup Guide**: [How to Replace In-Memory State with Vercel KV](doc/vercel-kv-setup.md)
 
 ## 🎯 Use Cases
 

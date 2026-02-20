@@ -156,4 +156,4 @@ Added 11 new tests specifically for error handling scenarios:
 - WebSocket send failures
 - Callback error handling
 
-Total test coverage: 250 tests (all passing)
+Total test coverage: 280 tests (all passing)

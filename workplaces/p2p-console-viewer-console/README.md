@@ -134,7 +134,7 @@ npm run check
 ## Dependencies
 
 ### Core
-- `p2p-console-viewer-lib@0.0.3` - Local P2P connection library
+- `p2p-console-viewer-lib@0.0.6` - Local P2P connection library
 - `@sveltejs/kit@^2.47.1` - SvelteKit framework
 - `svelte@^5.41.0` - Svelte 5 reactive framework
 
