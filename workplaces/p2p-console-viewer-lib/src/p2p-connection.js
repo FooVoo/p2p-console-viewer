@@ -353,7 +353,7 @@ export class P2PConnection {
    * @returns {boolean} True when peer connection is connected and data channel is open.
    */
   isConnected() {
-    return (
+    return Boolean(
       this.peerConnection &&
       this.peerConnection.connectionState === "connected" &&
       this.dataChannel &&

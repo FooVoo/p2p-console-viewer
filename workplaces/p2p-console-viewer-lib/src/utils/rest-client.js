@@ -52,7 +52,7 @@ export class RestClient {
         const url = new URL(path, base);
         if (params) {
             Object.entries(params).forEach(([k, v]) => {
-                if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
+                if (v !== undefined && v !== null) { url.searchParams.set(k, String(v)); }
             });
         }
         return url.toString();
@@ -114,7 +114,7 @@ export class RestClient {
                 init.body = body;
             } else {
                 init.body = JSON.stringify(body);
-                if (!mergedHeaders['Content-Type']) mergedHeaders['Content-Type'] = 'application/json';
+                if (!mergedHeaders['Content-Type']) { mergedHeaders['Content-Type'] = 'application/json'; }
             }
         }
 
@@ -128,13 +128,13 @@ export class RestClient {
             return parsed;
         } catch (err) {
             if (err && err.name === 'AbortError') {
-                if (timedOut) throw new Error('Request timed out');
-                if (abortedByExternal) throw new Error('Request aborted');
+                if (timedOut) { throw new Error('Request timed out'); }
+                if (abortedByExternal) { throw new Error('Request aborted'); }
                 throw new Error('Request aborted');
             }
             throw err;
         } finally {
-            if (timer) clearTimeout(timer);
+            if (timer) { clearTimeout(timer); }
             if (signal && externalAbortHandler) {
                 signal.removeEventListener('abort', externalAbortHandler);
             }

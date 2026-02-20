@@ -43,7 +43,7 @@ export class ConsoleInterceptor {
    * @param {function(string, ...*):void} callback - Function invoked for each console call.
    */
   patch(callback) {
-    if (this.isPatched) return;
+    if (this.isPatched) { return; }
 
     const methodsToPatch = ["log", "info", "warn", "error", "debug"];
 
@@ -68,7 +68,7 @@ export class ConsoleInterceptor {
    * If not patched, this is a no-op.
    */
   unpatch() {
-    if (!this.isPatched) return;
+    if (!this.isPatched) { return; }
 
     Object.keys(this.originalMethods).forEach((method) => {
       console[method] = this.originalMethods[method];
