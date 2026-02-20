@@ -35,5 +35,14 @@ export default [
 			'no-async-promise-executor': 'error',
 			'no-promise-executor-return': 'error',
 		}
+	},
+	// Browser globals for lib source files that target the browser
+	{
+		files: ['workplaces/p2p-console-viewer-lib/src/**/*.js'],
+		languageOptions: {
+			globals: {
+				...globals.browser
+			}
+		}
 	}
 ];

@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import P2pMessageHelperModule from '../../workplaces/p2p-console-viewer-lib/src/p2p-message-helper.js';
-
-const { P2pMessageHelper } = P2pMessageHelperModule;
+import { P2pMessageHelper } from '../../workplaces/p2p-console-viewer-lib/src/p2p-message-helper.js';
 
 describe('P2pMessageHelper', () => {
   describe('constructor', () => {

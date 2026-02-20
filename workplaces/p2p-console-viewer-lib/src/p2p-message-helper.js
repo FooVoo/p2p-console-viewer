@@ -41,17 +41,17 @@ class P2pMessageHelper {
      * @returns {*}
      */
     _serializeArg(arg) {
-        if (arg === null || arg === undefined) return arg;
+        if (arg === null || arg === undefined) { return arg; }
         const t = typeof arg;
-        if (t === 'string' || t === 'number' || t === 'boolean') return arg;
-        if (t === 'function') return `[function:${arg.name || 'anonymous'}]`;
+        if (t === 'string' || t === 'number' || t === 'boolean') { return arg; }
+        if (t === 'function') { return `[function:${arg.name || 'anonymous'}]`; }
         try {
             return JSON.parse(JSON.stringify(arg));
-        } catch (e) {
+        } catch {
             // Fallback to toString for circular/complex values
             try {
                 return String(arg);
-            } catch (e2) {
+            } catch {
                 return `[unserializable:${t}]`;
             }
         }
@@ -97,7 +97,7 @@ class P2pMessageHelper {
             // ignore console call errors to avoid breaking message creation
             try {
                 (this.consoleTarget.log || (() => {})).call(this.consoleTarget, 'Console call failed:', e);
-            } catch (e2) { /* noop */ }
+            } catch { /* noop */ }
         }
 
         return this.buildMessage(method, args);
@@ -122,13 +122,13 @@ class P2pMessageHelper {
     static serialize(message) {
         try {
             return JSON.stringify(message);
-        } catch (e) {
+        } catch {
             // Best-effort fallback
             return JSON.stringify({
                 id: message && message.id,
                 level: message && message.level,
                 timestamp: message && message.timestamp,
-                text: message && message.text || '[unserializable]'
+                text: (message && message.text) || '[unserializable]'
             });
         }
     }
@@ -141,7 +141,7 @@ class P2pMessageHelper {
     static parse(json) {
         try {
             return JSON.parse(json);
-        } catch (e) {
+        } catch {
             return null;
         }
     }
@@ -152,8 +152,8 @@ class P2pMessageHelper {
      * @returns {boolean}
      */
     static isConsoleMessage(msg) {
-        return msg && typeof msg === 'object' && typeof msg.level === 'string' && typeof msg.timestamp !== 'undefined';
+        return msg !== null && typeof msg === 'object' && typeof msg.level === 'string' && typeof msg.timestamp !== 'undefined';
     }
 }
 
-export default { P2pMessageHelper };
+export { P2pMessageHelper };

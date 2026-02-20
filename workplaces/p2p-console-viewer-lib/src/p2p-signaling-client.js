@@ -303,12 +303,13 @@ export class P2PSignalingClient {
         }
         break;
 
-      case "error":
+      case "error": {
         // Server error message
         const errorMsg = data.message || "Unknown server error";
         console.error("Server error:", errorMsg);
         this.emitError(new Error(errorMsg));
         break;
+      }
 
       default:
         console.log("Unknown signaling message:", data);
@@ -423,7 +424,7 @@ export class P2PSignalingClient {
       // Only one arg provided -> treat as payload and send to first connected peer
       payload = remotePeerIdOrMessage;
       const first = this.peers.values().next();
-      if (first.done) return false;
+      if (first.done) { return false; }
       const firstP2P = first.value;
       return firstP2P.send(payload);
     } else {

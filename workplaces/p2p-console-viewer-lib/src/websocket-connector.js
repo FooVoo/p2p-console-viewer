@@ -327,7 +327,7 @@ class WebSocketConnector {
    * @returns {boolean} True when connected and readyState is WebSocket.OPEN.
    */
   isConnected() {
-    return !!(this.ws && this.ws.readyState === WebSocket.OPEN);
+    return Boolean(this.ws && this.ws.readyState === WebSocket.OPEN);
   }
 }
 
