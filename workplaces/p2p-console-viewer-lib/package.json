@@ -16,6 +16,7 @@
     "type-gen": "npx -p typescript tsc src/*.js --declaration --allowJs --emitDeclarationOnly --outDir types",
     "prepack": "npm run type-gen",
     "preview": "vite preview",
+    "pack": "npm pack",
     "postversion": "npm pack",
     "format": "prettier --write .",
     "lint": "prettier --check . && eslint ."
