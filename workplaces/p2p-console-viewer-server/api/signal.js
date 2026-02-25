@@ -1,7 +1,6 @@
-"use strict";
-
-const { rateAllow } = require("../lib/validation.js");
-const { MESSAGE_BURST, MESSAGE_RATE_PER_SEC, MAX_QUEUE_SIZE } = require("../lib/guardrails.js");
+import { rateAllow } from "../lib/validation.js";
+import { MESSAGE_BURST, MESSAGE_RATE_PER_SEC, MAX_QUEUE_SIZE } from "../lib/guardrails.js";
+import { roomManager } from "../lib/shared-state.js";
 
 /**
  * Factory that returns a `POST /api/signal` handler backed by `roomManager`.
@@ -13,10 +12,10 @@ const { MESSAGE_BURST, MESSAGE_RATE_PER_SEC, MAX_QUEUE_SIZE } = require("../lib/
  * Request body: `{ id: string, type: string, to?: string, ...payload }`
  * Response:     `{ ok: true }`
  *
- * @param {import('../lib/room-manager').RoomManager} roomManager
+ * @param {import('../lib/room-manager').RoomManager} rm
  * @returns {(request: Request) => Promise<Response>}
  */
-function createSignalHandler(roomManager) {
+export function createSignalHandler(rm) {
   return async (request) => {
     try {
       if (request.method !== "POST") {
@@ -44,7 +43,7 @@ function createSignalHandler(roomManager) {
         return new Response(JSON.stringify({ error: "invalid-message" }), { status: 400 });
       }
 
-      const client = roomManager.getClient(id);
+      const client = rm.getClient(id);
       if (!client) {
         return new Response(JSON.stringify({ error: "client-not-found" }), { status: 404 });
       }
@@ -53,7 +52,7 @@ function createSignalHandler(roomManager) {
         return new Response(JSON.stringify({ error: "rate-limit" }), { status: 429 });
       }
 
-      const result = roomManager.routeSignal(id, message, MAX_QUEUE_SIZE);
+      const result = rm.routeSignal(id, message, MAX_QUEUE_SIZE);
 
       if (result.error) {
         return new Response(JSON.stringify({ error: result.error }), { status: 400 });
@@ -67,13 +66,8 @@ function createSignalHandler(roomManager) {
   };
 }
 
-const { roomManager } = require("../lib/shared-state.js");
 const _signalHandler = createSignalHandler(roomManager);
 
-async function POST(request) {
+export default async function POST(request) {
   return _signalHandler(request);
 }
-
-module.exports = POST;
-module.exports.POST = POST;
-module.exports.createSignalHandler = createSignalHandler;

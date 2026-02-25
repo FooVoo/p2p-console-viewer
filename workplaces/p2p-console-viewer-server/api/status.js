@@ -1,14 +1,14 @@
-"use strict";
+import { roomManager } from "../lib/shared-state.js";
 
 /**
  * Factory that returns a `GET /api/status` handler backed by `roomManager`.
  *
  * Response: `{ totalClients: number, clients: string[], rooms: object }`
  *
- * @param {import('../lib/room-manager').RoomManager} roomManager
+ * @param {import('../lib/room-manager').RoomManager} rm
  * @returns {(request: Request) => Promise<Response>}
  */
-function createStatusHandler(roomManager) {
+export function createStatusHandler(rm) {
   return async (request) => {
     try {
       if (request.method !== "GET") {
@@ -16,7 +16,7 @@ function createStatusHandler(roomManager) {
       }
 
       console.log("Status request from:", request.headers.get("x-forwarded-for") ?? "unknown");
-      return new Response(JSON.stringify(roomManager.getStatus()), { status: 200 });
+      return new Response(JSON.stringify(rm.getStatus()), { status: 200 });
     } catch (err) {
       console.error("status handler error:", err);
       return new Response(JSON.stringify({ error: "internal-error" }), { status: 500 });
@@ -24,13 +24,8 @@ function createStatusHandler(roomManager) {
   };
 }
 
-const { roomManager } = require("../lib/shared-state.js");
 const _statusHandler = createStatusHandler(roomManager);
 
-async function GET(request) {
+export default async function GET(request) {
   return _statusHandler(request);
 }
-
-module.exports = GET;
-module.exports.GET = GET;
-module.exports.createStatusHandler = createStatusHandler;

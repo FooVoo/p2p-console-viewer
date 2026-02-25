@@ -1,13 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createRequire } from 'module';
-
-const require = createRequire(import.meta.url);
-const { RoomManager } = require('../../workplaces/p2p-console-viewer-server/lib/room-manager.js');
-const { createJoinHandler } = require('../../workplaces/p2p-console-viewer-server/api/join.js');
-const { createLeaveHandler } = require('../../workplaces/p2p-console-viewer-server/api/leave.js');
-const { createSignalHandler } = require('../../workplaces/p2p-console-viewer-server/api/signal.js');
-const { createPollHandler } = require('../../workplaces/p2p-console-viewer-server/api/poll.js');
-const { createStatusHandler } = require('../../workplaces/p2p-console-viewer-server/api/status.js');
+import { RoomManager } from '../../workplaces/p2p-console-viewer-server/lib/room-manager.js';
+import { createJoinHandler } from '../../workplaces/p2p-console-viewer-server/api/join.js';
+import { createLeaveHandler } from '../../workplaces/p2p-console-viewer-server/api/leave.js';
+import { createSignalHandler } from '../../workplaces/p2p-console-viewer-server/api/signal.js';
+import { createPollHandler } from '../../workplaces/p2p-console-viewer-server/api/poll.js';
+import { createStatusHandler } from '../../workplaces/p2p-console-viewer-server/api/status.js';
 
 // ── Test helpers ─────────────────────────────────────────────────────────────
 

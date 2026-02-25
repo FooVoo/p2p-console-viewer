@@ -1,6 +1,5 @@
-"use strict";
-
-const { CLIENT_TTL } = require("../lib/guardrails.js");
+import { CLIENT_TTL } from "../lib/guardrails.js";
+import { roomManager } from "../lib/shared-state.js";
 
 /**
  * Factory that returns a `GET /api/poll` handler backed by `roomManager`.
@@ -13,10 +12,10 @@ const { CLIENT_TTL } = require("../lib/guardrails.js");
  * Query param: `id=<clientId>`
  * Response:    `{ messages: object[] }`
  *
- * @param {import('../lib/room-manager').RoomManager} roomManager
+ * @param {import('../lib/room-manager').RoomManager} rm
  * @returns {(request: Request) => Promise<Response>}
  */
-function createPollHandler(roomManager) {
+export function createPollHandler(rm) {
   return async (request) => {
     try {
       if (request.method !== "GET") {
@@ -29,9 +28,9 @@ function createPollHandler(roomManager) {
         return new Response(JSON.stringify({ error: "invalid-id" }), { status: 400 });
       }
 
-      roomManager.evictStale(CLIENT_TTL);
+      rm.evictStale(CLIENT_TTL);
 
-      const messages = roomManager.drainQueue(id);
+      const messages = rm.drainQueue(id);
 
       if (messages === null) {
         return new Response(JSON.stringify({ error: "client-not-found" }), { status: 404 });
@@ -45,13 +44,8 @@ function createPollHandler(roomManager) {
   };
 }
 
-const { roomManager } = require("../lib/shared-state.js");
 const _pollHandler = createPollHandler(roomManager);
 
-async function GET(request) {
+export default async function GET(request) {
   return _pollHandler(request);
 }
-
-module.exports = GET;
-module.exports.GET = GET;
-module.exports.createPollHandler = createPollHandler;

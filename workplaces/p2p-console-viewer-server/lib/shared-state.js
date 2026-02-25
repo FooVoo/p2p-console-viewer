@@ -1,6 +1,4 @@
-"use strict";
-
-const { RoomManager } = require("./room-manager.js");
+import { RoomManager } from "./room-manager.js";
 
 /**
  * Shared RoomManager instance used by all serverless API handlers.
@@ -10,6 +8,4 @@ const { RoomManager } = require("./room-manager.js");
  * default.  For production use, replace this with a Vercel KV (Redis) backed
  * adapter so that all handlers operate on the same persistent state.
  */
-const roomManager = new RoomManager();
-
-module.exports = { roomManager };
+export const roomManager = new RoomManager();

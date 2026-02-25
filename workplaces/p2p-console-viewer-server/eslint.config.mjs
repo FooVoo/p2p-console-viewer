@@ -6,12 +6,8 @@ export default [
 	{
 		files: ['**/*.js'],
 		languageOptions: {
-			sourceType: 'commonjs',
+			sourceType: 'module',
 			globals: {
-				__dirname: 'readonly',
-				require: 'readonly',
-				module: 'readonly',
-				exports: 'readonly',
 				process: 'readonly'
 			}
 		}

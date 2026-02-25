@@ -1,8 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createRequire } from 'module';
-
-const require = createRequire(import.meta.url);
-const { RoomManager } = require('../../workplaces/p2p-console-viewer-server/lib/room-manager.js');
+import { RoomManager } from '../../workplaces/p2p-console-viewer-server/lib/room-manager.js';
 
 describe('RoomManager', () => {
 	let rm;
