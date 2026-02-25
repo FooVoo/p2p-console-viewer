@@ -7,32 +7,38 @@
  * Response:     `{ ok: true }`
  *
  * @param {import('../lib/room-manager').RoomManager} roomManager
- * @returns {(req: object, res: object) => void}
+ * @returns {(request: Request) => Promise<Response>}
  */
 function createLeaveHandler(roomManager) {
-  return (req, res) => {
+  return async (request) => {
     try {
-      if (req.method !== "POST") {
-        res.status(405).json({ error: "method-not-allowed" });
-        return;
+      if (request.method !== "POST") {
+        return new Response(JSON.stringify({ error: "method-not-allowed" }), { status: 405 });
       }
 
-      const { id } = req.body || {};
+      const body = await request.json().catch(() => ({}));
+      const { id } = body;
 
       if (!id || typeof id !== "string") {
-        res.status(400).json({ error: "invalid-id" });
-        return;
+        return new Response(JSON.stringify({ error: "invalid-id" }), { status: 400 });
       }
 
       roomManager.removeClient(id);
-      res.status(200).json({ ok: true });
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
     } catch (err) {
       console.error("leave handler error:", err);
-      res.status(500).json({ error: "internal-error" });
+      return new Response(JSON.stringify({ error: "internal-error" }), { status: 500 });
     }
   };
 }
 
 const { roomManager } = require("../lib/shared-state.js");
-module.exports = createLeaveHandler(roomManager);
+const _leaveHandler = createLeaveHandler(roomManager);
+
+async function POST(request) {
+  return _leaveHandler(request);
+}
+
+module.exports = POST;
+module.exports.POST = POST;
 module.exports.createLeaveHandler = createLeaveHandler;

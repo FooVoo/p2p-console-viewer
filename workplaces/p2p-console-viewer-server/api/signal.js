@@ -14,17 +14,16 @@ const { MESSAGE_BURST, MESSAGE_RATE_PER_SEC, MAX_QUEUE_SIZE } = require("../lib/
  * Response:     `{ ok: true }`
  *
  * @param {import('../lib/room-manager').RoomManager} roomManager
- * @returns {(req: object, res: object) => void}
+ * @returns {(request: Request) => Promise<Response>}
  */
 function createSignalHandler(roomManager) {
-  return (req, res) => {
+  return async (request) => {
     try {
-      if (req.method !== "POST") {
-        res.status(405).json({ error: "method-not-allowed" });
-        return;
+      if (request.method !== "POST") {
+        return new Response(JSON.stringify({ error: "method-not-allowed" }), { status: 405 });
       }
 
-      const body = req.body || {};
+      const body = await request.json().catch(() => ({}));
 
       // Guard against prototype-pollution payloads.
       if (
@@ -32,48 +31,49 @@ function createSignalHandler(roomManager) {
         Object.prototype.hasOwnProperty.call(body, "constructor") ||
         Object.prototype.hasOwnProperty.call(body, "prototype")
       ) {
-        res.status(400).json({ error: "invalid-message" });
-        return;
+        return new Response(JSON.stringify({ error: "invalid-message" }), { status: 400 });
       }
 
       const { id, ...message } = body;
 
       if (!id || typeof id !== "string") {
-        res.status(400).json({ error: "invalid-id" });
-        return;
+        return new Response(JSON.stringify({ error: "invalid-id" }), { status: 400 });
       }
 
       if (!message.type || typeof message.type !== "string") {
-        res.status(400).json({ error: "invalid-message" });
-        return;
+        return new Response(JSON.stringify({ error: "invalid-message" }), { status: 400 });
       }
 
       const client = roomManager.getClient(id);
       if (!client) {
-        res.status(404).json({ error: "client-not-found" });
-        return;
+        return new Response(JSON.stringify({ error: "client-not-found" }), { status: 404 });
       }
 
       if (!rateAllow(client.rate, MESSAGE_BURST, MESSAGE_RATE_PER_SEC)) {
-        res.status(429).json({ error: "rate-limit" });
-        return;
+        return new Response(JSON.stringify({ error: "rate-limit" }), { status: 429 });
       }
 
       const result = roomManager.routeSignal(id, message, MAX_QUEUE_SIZE);
 
       if (result.error) {
-        res.status(400).json({ error: result.error });
-        return;
+        return new Response(JSON.stringify({ error: result.error }), { status: 400 });
       }
 
-      res.status(200).json({ ok: true });
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
     } catch (err) {
       console.error("signal handler error:", err);
-      res.status(500).json({ error: "internal-error" });
+      return new Response(JSON.stringify({ error: "internal-error" }), { status: 500 });
     }
   };
 }
 
 const { roomManager } = require("../lib/shared-state.js");
-module.exports = createSignalHandler(roomManager);
+const _signalHandler = createSignalHandler(roomManager);
+
+async function POST(request) {
+  return _signalHandler(request);
+}
+
+module.exports = POST;
+module.exports.POST = POST;
 module.exports.createSignalHandler = createSignalHandler;

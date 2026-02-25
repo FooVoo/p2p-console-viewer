@@ -14,21 +14,19 @@ const { CLIENT_TTL } = require("../lib/guardrails.js");
  * Response:    `{ messages: object[] }`
  *
  * @param {import('../lib/room-manager').RoomManager} roomManager
- * @returns {(req: object, res: object) => void}
+ * @returns {(request: Request) => Promise<Response>}
  */
 function createPollHandler(roomManager) {
-  return (req, res) => {
+  return async (request) => {
     try {
-      if (req.method !== "GET") {
-        res.status(405).json({ error: "method-not-allowed" });
-        return;
+      if (request.method !== "GET") {
+        return new Response(JSON.stringify({ error: "method-not-allowed" }), { status: 405 });
       }
 
-      const id = (req.query || {}).id;
+      const id = new URL(request.url).searchParams.get("id");
 
       if (!id || typeof id !== "string") {
-        res.status(400).json({ error: "invalid-id" });
-        return;
+        return new Response(JSON.stringify({ error: "invalid-id" }), { status: 400 });
       }
 
       roomManager.evictStale(CLIENT_TTL);
@@ -36,18 +34,24 @@ function createPollHandler(roomManager) {
       const messages = roomManager.drainQueue(id);
 
       if (messages === null) {
-        res.status(404).json({ error: "client-not-found" });
-        return;
+        return new Response(JSON.stringify({ error: "client-not-found" }), { status: 404 });
       }
 
-      res.status(200).json({ messages });
+      return new Response(JSON.stringify({ messages }), { status: 200 });
     } catch (err) {
       console.error("poll handler error:", err);
-      res.status(500).json({ error: "internal-error" });
+      return new Response(JSON.stringify({ error: "internal-error" }), { status: 500 });
     }
   };
 }
 
 const { roomManager } = require("../lib/shared-state.js");
-module.exports = createPollHandler(roomManager);
+const _pollHandler = createPollHandler(roomManager);
+
+async function GET(request) {
+  return _pollHandler(request);
+}
+
+module.exports = GET;
+module.exports.GET = GET;
 module.exports.createPollHandler = createPollHandler;

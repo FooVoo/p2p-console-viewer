@@ -10,26 +10,24 @@ const { MAX_CLIENTS, MAX_ROOM_CLIENTS, MESSAGE_BURST } = require("../lib/guardra
  * Response:     `{ id: string, room: string, peers: string[] }`
  *
  * @param {import('../lib/room-manager').RoomManager} roomManager
- * @returns {(req: object, res: object) => void}
+ * @returns {(request: Request) => Promise<Response>}
  */
 function createJoinHandler(roomManager) {
-  return (req, res) => {
+  return async (request) => {
     try {
-      if (req.method !== "POST") {
-        res.status(405).json({ error: "method-not-allowed" });
-        return;
+      if (request.method !== "POST") {
+        return new Response(JSON.stringify({ error: "method-not-allowed" }), { status: 405 });
       }
 
-      const { room } = req.body || {};
+      const body = await request.json().catch(() => ({}));
+      const { room } = body;
 
       if (!isValidRoomName(room)) {
-        res.status(400).json({ error: "invalid-room-name" });
-        return;
+        return new Response(JSON.stringify({ error: "invalid-room-name" }), { status: 400 });
       }
 
       if (roomManager.getClientCount() >= MAX_CLIENTS) {
-        res.status(503).json({ error: "server-overloaded" });
-        return;
+        return new Response(JSON.stringify({ error: "server-overloaded" }), { status: 503 });
       }
 
       const id = roomManager.createClient(MESSAGE_BURST);
@@ -37,18 +35,24 @@ function createJoinHandler(roomManager) {
 
       if (result.error) {
         roomManager.removeClient(id);
-        res.status(409).json({ error: result.error });
-        return;
+        return new Response(JSON.stringify({ error: result.error }), { status: 409 });
       }
 
-      res.status(200).json({ id, room: result.room, peers: result.peers });
+      return new Response(JSON.stringify({ id, room: result.room, peers: result.peers }), { status: 200 });
     } catch (err) {
       console.error("join handler error:", err);
-      res.status(500).json({ error: "internal-error" });
+      return new Response(JSON.stringify({ error: "internal-error" }), { status: 500 });
     }
   };
 }
 
 const { roomManager } = require("../lib/shared-state.js");
-module.exports = createJoinHandler(roomManager);
+const _joinHandler = createJoinHandler(roomManager);
+
+async function POST(request) {
+  return _joinHandler(request);
+}
+
+module.exports = POST;
+module.exports.POST = POST;
 module.exports.createJoinHandler = createJoinHandler;
