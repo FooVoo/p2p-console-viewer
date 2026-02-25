@@ -1,6 +1,5 @@
-"use strict";
-
-const { CLIENT_TTL } = require("../lib/guardrails.js");
+import { CLIENT_TTL } from "../lib/guardrails.js";
+import { roomManager } from "../lib/shared-state.js";
 
 /**
  * Factory that returns a `GET /api/poll` handler backed by `roomManager`.
@@ -16,7 +15,7 @@ const { CLIENT_TTL } = require("../lib/guardrails.js");
  * @param {import('../lib/room-manager').RoomManager} roomManager
  * @returns {(request: Request) => Promise<Response>}
  */
-function createPollHandler(roomManager) {
+export function createPollHandler(roomManager) {
   return async (request) => {
     try {
       if (request.method !== "GET") {
@@ -45,13 +44,10 @@ function createPollHandler(roomManager) {
   };
 }
 
-const { roomManager } = require("../lib/shared-state.js");
 const _pollHandler = createPollHandler(roomManager);
 
-async function GET(request) {
-  return _pollHandler(request);
-}
-
-module.exports = GET;
-module.exports.GET = GET;
-module.exports.createPollHandler = createPollHandler;
+export default {
+  fetch(request) {
+    return _pollHandler(request);
+  },
+};

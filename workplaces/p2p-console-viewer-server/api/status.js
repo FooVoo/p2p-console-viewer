@@ -1,4 +1,4 @@
-"use strict";
+import { roomManager } from "../lib/shared-state.js";
 
 /**
  * Factory that returns a `GET /api/status` handler backed by `roomManager`.
@@ -8,7 +8,7 @@
  * @param {import('../lib/room-manager').RoomManager} roomManager
  * @returns {(request: Request) => Promise<Response>}
  */
-function createStatusHandler(roomManager) {
+export function createStatusHandler(roomManager) {
   return async (request) => {
     try {
       if (request.method !== "GET") {
@@ -24,13 +24,10 @@ function createStatusHandler(roomManager) {
   };
 }
 
-const { roomManager } = require("../lib/shared-state.js");
 const _statusHandler = createStatusHandler(roomManager);
 
-async function GET(request) {
-  return _statusHandler(request);
-}
-
-module.exports = GET;
-module.exports.GET = GET;
-module.exports.createStatusHandler = createStatusHandler;
+export default {
+  fetch(request) {
+    return _statusHandler(request);
+  },
+};

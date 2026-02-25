@@ -1,13 +1,13 @@
-const path = require("path");
-require("dotenv").config({path: path.join(__dirname, ".env")});
+import "dotenv/config";
+import path from "path";
+import { fileURLToPath } from "url";
+import express from "express";
+import http from "http";
+import WebSocket, { WebSocketServer } from "ws";
+import os from "os";
+import { v4 as uuidv4 } from "uuid";
 
-const express = require("express");
-const http = require("http");
-const WebSocket = require("ws");
-const os = require("os");
-const {v4: uuidv4} = require("uuid");
-
-const {
+import {
   MAX_PAYLOAD,
   MAX_CLIENTS,
   MAX_ROOM_CLIENTS,
@@ -16,14 +16,16 @@ const {
   HEARTBEAT_INTERVAL,
   WS_SECRET,
   ALLOWED_ORIGINS,
-} = require("./lib/guardrails.js");
-const { isValidRoomName, rateAllow } = require("./lib/validation.js");
+} from "./lib/guardrails.js";
+import { isValidRoomName, rateAllow } from "./lib/validation.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const server = http.createServer(app);
 
 
-const wss = new WebSocket.Server({server, maxPayload: MAX_PAYLOAD});
+const wss = new WebSocketServer({server, maxPayload: MAX_PAYLOAD});
 
 const clients = new Map(); // id -> { ws, room, id, rate }
 const rooms = new Map(); // room -> Set<clientId>

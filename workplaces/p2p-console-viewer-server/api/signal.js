@@ -1,7 +1,6 @@
-"use strict";
-
-const { rateAllow } = require("../lib/validation.js");
-const { MESSAGE_BURST, MESSAGE_RATE_PER_SEC, MAX_QUEUE_SIZE } = require("../lib/guardrails.js");
+import { rateAllow } from "../lib/validation.js";
+import { MESSAGE_BURST, MESSAGE_RATE_PER_SEC, MAX_QUEUE_SIZE } from "../lib/guardrails.js";
+import { roomManager } from "../lib/shared-state.js";
 
 /**
  * Factory that returns a `POST /api/signal` handler backed by `roomManager`.
@@ -16,7 +15,7 @@ const { MESSAGE_BURST, MESSAGE_RATE_PER_SEC, MAX_QUEUE_SIZE } = require("../lib/
  * @param {import('../lib/room-manager').RoomManager} roomManager
  * @returns {(request: Request) => Promise<Response>}
  */
-function createSignalHandler(roomManager) {
+export function createSignalHandler(roomManager) {
   return async (request) => {
     try {
       if (request.method !== "POST") {
@@ -67,13 +66,10 @@ function createSignalHandler(roomManager) {
   };
 }
 
-const { roomManager } = require("../lib/shared-state.js");
 const _signalHandler = createSignalHandler(roomManager);
 
-async function POST(request) {
-  return _signalHandler(request);
-}
-
-module.exports = POST;
-module.exports.POST = POST;
-module.exports.createSignalHandler = createSignalHandler;
+export default {
+  fetch(request) {
+    return _signalHandler(request);
+  },
+};

@@ -1,6 +1,4 @@
-"use strict";
-
-const { v4: uuidv4 } = require("uuid");
+import { v4 as uuidv4 } from "uuid";
 
 /**
  * In-memory room and client state manager for the REST-based signaling API.
@@ -290,4 +288,4 @@ class RoomManager {
   }
 }
 
-module.exports = { RoomManager };
+export { RoomManager };

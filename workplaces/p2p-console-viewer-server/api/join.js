@@ -1,7 +1,6 @@
-"use strict";
-
-const { isValidRoomName } = require("../lib/validation.js");
-const { MAX_CLIENTS, MAX_ROOM_CLIENTS, MESSAGE_BURST } = require("../lib/guardrails.js");
+import { isValidRoomName } from "../lib/validation.js";
+import { MAX_CLIENTS, MAX_ROOM_CLIENTS, MESSAGE_BURST } from "../lib/guardrails.js";
+import { roomManager } from "../lib/shared-state.js";
 
 /**
  * Factory that returns a `POST /api/join` handler backed by `roomManager`.
@@ -12,7 +11,7 @@ const { MAX_CLIENTS, MAX_ROOM_CLIENTS, MESSAGE_BURST } = require("../lib/guardra
  * @param {import('../lib/room-manager').RoomManager} roomManager
  * @returns {(request: Request) => Promise<Response>}
  */
-function createJoinHandler(roomManager) {
+export function createJoinHandler(roomManager) {
   return async (request) => {
     try {
       if (request.method !== "POST") {
@@ -46,13 +45,10 @@ function createJoinHandler(roomManager) {
   };
 }
 
-const { roomManager } = require("../lib/shared-state.js");
 const _joinHandler = createJoinHandler(roomManager);
 
-async function POST(request) {
-  return _joinHandler(request);
-}
-
-module.exports = POST;
-module.exports.POST = POST;
-module.exports.createJoinHandler = createJoinHandler;
+export default {
+  fetch(request) {
+    return _joinHandler(request);
+  },
+};
