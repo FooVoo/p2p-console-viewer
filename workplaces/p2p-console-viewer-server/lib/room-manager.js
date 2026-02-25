@@ -256,6 +256,14 @@ class RoomManager {
   // ─── Observability ─────────────────────────────────────────────────────────
 
   /**
+   * Return the current number of connected clients.
+   * @returns {number}
+   */
+  getClientCount() {
+    return this.clients.size;
+  }
+
+  /**
    * Return a point-in-time snapshot of connected clients and rooms.
    * @returns {{ totalClients: number, clients: string[], rooms: object }}
    */

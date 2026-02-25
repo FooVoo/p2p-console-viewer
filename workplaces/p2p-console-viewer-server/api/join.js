@@ -14,33 +14,38 @@ const { MAX_CLIENTS, MAX_ROOM_CLIENTS, MESSAGE_BURST } = require("../lib/guardra
  */
 function createJoinHandler(roomManager) {
   return (req, res) => {
-    if (req.method !== "POST") {
-      res.status(405).json({ error: "method-not-allowed" });
-      return;
+    try {
+      if (req.method !== "POST") {
+        res.status(405).json({ error: "method-not-allowed" });
+        return;
+      }
+
+      const { room } = req.body || {};
+
+      if (!isValidRoomName(room)) {
+        res.status(400).json({ error: "invalid-room-name" });
+        return;
+      }
+
+      if (roomManager.getClientCount() >= MAX_CLIENTS) {
+        res.status(503).json({ error: "server-overloaded" });
+        return;
+      }
+
+      const id = roomManager.createClient(MESSAGE_BURST);
+      const result = roomManager.joinRoom(id, room, MAX_ROOM_CLIENTS);
+
+      if (result.error) {
+        roomManager.removeClient(id);
+        res.status(409).json({ error: result.error });
+        return;
+      }
+
+      res.status(200).json({ id, room: result.room, peers: result.peers });
+    } catch (err) {
+      console.error("join handler error:", err);
+      res.status(500).json({ error: "internal-error" });
     }
-
-    const { room } = req.body || {};
-
-    if (!isValidRoomName(room)) {
-      res.status(400).json({ error: "invalid-room-name" });
-      return;
-    }
-
-    if (roomManager.clients.size >= MAX_CLIENTS) {
-      res.status(503).json({ error: "server-overloaded" });
-      return;
-    }
-
-    const id = roomManager.createClient(MESSAGE_BURST);
-    const result = roomManager.joinRoom(id, room, MAX_ROOM_CLIENTS);
-
-    if (result.error) {
-      roomManager.removeClient(id);
-      res.status(409).json({ error: result.error });
-      return;
-    }
-
-    res.status(200).json({ id, room: result.room, peers: result.peers });
   };
 }
 

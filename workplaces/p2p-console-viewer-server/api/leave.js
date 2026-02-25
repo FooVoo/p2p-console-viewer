@@ -11,20 +11,25 @@
  */
 function createLeaveHandler(roomManager) {
   return (req, res) => {
-    if (req.method !== "POST") {
-      res.status(405).json({ error: "method-not-allowed" });
-      return;
+    try {
+      if (req.method !== "POST") {
+        res.status(405).json({ error: "method-not-allowed" });
+        return;
+      }
+
+      const { id } = req.body || {};
+
+      if (!id || typeof id !== "string") {
+        res.status(400).json({ error: "invalid-id" });
+        return;
+      }
+
+      roomManager.removeClient(id);
+      res.status(200).json({ ok: true });
+    } catch (err) {
+      console.error("leave handler error:", err);
+      res.status(500).json({ error: "internal-error" });
     }
-
-    const { id } = req.body || {};
-
-    if (!id || typeof id !== "string") {
-      res.status(400).json({ error: "invalid-id" });
-      return;
-    }
-
-    roomManager.removeClient(id);
-    res.status(200).json({ ok: true });
   };
 }
 

@@ -307,6 +307,29 @@ describe('RoomManager', () => {
 		});
 	});
 
+	// ── getClientCount ─────────────────────────────────────────────────────────
+
+	describe('getClientCount', () => {
+		it('returns 0 when no clients are registered', () => {
+			expect(rm.getClientCount()).toBe(0);
+		});
+
+		it('returns the correct count after adding clients', () => {
+			rm.createClient(20);
+			rm.createClient(20);
+			rm.createClient(20);
+			expect(rm.getClientCount()).toBe(3);
+		});
+
+		it('decrements after removing a client', () => {
+			const a = rm.createClient(20);
+			rm.createClient(20);
+			expect(rm.getClientCount()).toBe(2);
+			rm.removeClient(a);
+			expect(rm.getClientCount()).toBe(1);
+		});
+	});
+
 	// ── getStatus ───────────────────────────────────────────────────────────────
 
 	describe('getStatus', () => {
