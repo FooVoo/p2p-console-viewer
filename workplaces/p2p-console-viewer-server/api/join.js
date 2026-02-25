@@ -1,6 +1,7 @@
 import { isValidRoomName } from "../lib/validation.js";
-import { MAX_CLIENTS, MAX_ROOM_CLIENTS, MESSAGE_BURST } from "../lib/guardrails.js";
+import { MAX_CLIENTS, MAX_ROOM_CLIENTS, MESSAGE_BURST, ALLOWED_ORIGINS } from "../lib/guardrails.js";
 import { roomManager } from "../lib/shared-state.js";
+import { withCors } from "../lib/cors.js";
 
 /**
  * Factory that returns a `POST /api/join` handler backed by `roomManager`.
@@ -9,10 +10,11 @@ import { roomManager } from "../lib/shared-state.js";
  * Response:     `{ id: string, room: string, peers: string[] }`
  *
  * @param {import('../lib/room-manager').RoomManager} roomManager
+ * @param {string[]} [allowedOrigins]
  * @returns {(request: Request) => Promise<Response>}
  */
-export function createJoinHandler(roomManager) {
-  return async (request) => {
+export function createJoinHandler(roomManager, allowedOrigins = ALLOWED_ORIGINS) {
+  return withCors(async (request) => {
     try {
       if (request.method !== "POST") {
         return new Response(JSON.stringify({ error: "method-not-allowed" }), { status: 405 });
@@ -42,7 +44,7 @@ export function createJoinHandler(roomManager) {
       console.error("join handler error:", err);
       return new Response(JSON.stringify({ error: "internal-error" }), { status: 500 });
     }
-  };
+  }, allowedOrigins);
 }
 
 const _joinHandler = createJoinHandler(roomManager);

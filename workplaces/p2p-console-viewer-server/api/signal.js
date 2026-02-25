@@ -1,6 +1,7 @@
 import { rateAllow } from "../lib/validation.js";
-import { MESSAGE_BURST, MESSAGE_RATE_PER_SEC, MAX_QUEUE_SIZE } from "../lib/guardrails.js";
+import { MESSAGE_BURST, MESSAGE_RATE_PER_SEC, MAX_QUEUE_SIZE, ALLOWED_ORIGINS } from "../lib/guardrails.js";
 import { roomManager } from "../lib/shared-state.js";
+import { withCors } from "../lib/cors.js";
 
 /**
  * Factory that returns a `POST /api/signal` handler backed by `roomManager`.
@@ -13,10 +14,11 @@ import { roomManager } from "../lib/shared-state.js";
  * Response:     `{ ok: true }`
  *
  * @param {import('../lib/room-manager').RoomManager} roomManager
+ * @param {string[]} [allowedOrigins]
  * @returns {(request: Request) => Promise<Response>}
  */
-export function createSignalHandler(roomManager) {
-  return async (request) => {
+export function createSignalHandler(roomManager, allowedOrigins = ALLOWED_ORIGINS) {
+  return withCors(async (request) => {
     try {
       if (request.method !== "POST") {
         return new Response(JSON.stringify({ error: "method-not-allowed" }), { status: 405 });
@@ -63,7 +65,7 @@ export function createSignalHandler(roomManager) {
       console.error("signal handler error:", err);
       return new Response(JSON.stringify({ error: "internal-error" }), { status: 500 });
     }
-  };
+  }, allowedOrigins);
 }
 
 const _signalHandler = createSignalHandler(roomManager);
