@@ -1,7 +1,3 @@
-declare namespace _default {
-    export { P2pMessageHelper };
-}
-export default _default;
 /**
  * P2pMessageHelper
  *
@@ -10,7 +6,7 @@ export default _default;
  *
  * Designed as a simple base for sending console-originated messages over P2P.
  */
-declare class P2pMessageHelper {
+export class P2pMessageHelper {
     /**
      * Serialize a message object to JSON string for sending.
      * @param {Object} message

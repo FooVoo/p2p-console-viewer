@@ -1,24 +1,37 @@
 <script lang="ts">
 	import { messages, type P2PMessage } from '$lib/stores/messages.store';
 	import { parseP2PMessage, serializeP2PMessage } from '$lib/utils/p2p-client';
-	import { P2PSignalingClient } from 'p2p-console-viewer-lib';
-	import { get } from 'svelte/store';
+	import { P2PSignalingClient, RestSignalingClient } from 'p2p-console-viewer-lib';
 	import { onMount } from 'svelte';
 
-	const client = new P2PSignalingClient('ws://localhost:3000');
+	type Protocol = 'ws' | 'rest';
+
+	let protocol: Protocol = 'ws';
+	let serverUrl = 'ws://localhost:3000';
+	let roomName = '';
 	let inputMessage = '';
 	let isConnected = false;
 	let connectionState = 'disconnected';
 	let autoReconnect = true;
 	let reconnectInterval = 3000;
-	let stateUpdateInterval: number;
+	let roomPeers: string[] = [];
+	let stateUpdateInterval: ReturnType<typeof setInterval>;
+
+	let wsClient: P2PSignalingClient | null = null;
+	let restClient: RestSignalingClient | null = null;
 
 	onMount(() => {
-		// Update connection state periodically
 		stateUpdateInterval = setInterval(() => {
-			connectionState = client.getConnectionState();
-			isConnected = client.isConnected();
-		}, 1000); // Update every second
+			if (protocol === 'ws' && wsClient) {
+				connectionState = wsClient.getConnectionState();
+				isConnected = wsClient.isConnected();
+				roomPeers = wsClient.getRoomPeers();
+			} else if (protocol === 'rest' && restClient) {
+				isConnected = restClient.isConnected();
+				connectionState = isConnected ? 'connected' : 'disconnected';
+				roomPeers = restClient.getRoomPeers();
+			}
+		}, 1000);
 
 		return () => {
 			if (stateUpdateInterval) {
@@ -27,52 +40,114 @@
 		};
 	});
 
-	const connect = () => {
-		console.log('connecting...');
-		client.connect();
-		client.whenConnected(() => {
-			console.log('Connected to signaling server');
-			isConnected = true;
-		});
-		client.onMessage((message: string) => {
+	const switchProtocol = (newProtocol: Protocol) => {
+		if (newProtocol === protocol) return;
+		if (isConnected) {
+			disconnect();
+		}
+		protocol = newProtocol;
+		serverUrl = protocol === 'ws' ? 'ws://localhost:3000' : 'http://localhost:3000';
+		wsClient = null;
+		restClient = null;
+	};
+
+	const setupPeerMessageHandler = (client: P2PSignalingClient | RestSignalingClient) => {
+		client.onPeerMessage((_peerId: string, message: string) => {
 			const parsedMessage = parseP2PMessage(message, 'inbound');
 			messages.update((msgs) => [...msgs, parsedMessage]);
 		});
 	};
 
-	const disconnect = () => {
+	const connect = async () => {
+		console.log(`Connecting via ${protocol.toUpperCase()}...`);
+
+		if (protocol === 'ws') {
+			wsClient = new P2PSignalingClient(serverUrl, { room: roomName || undefined });
+			setupPeerMessageHandler(wsClient);
+			wsClient.connect();
+			wsClient.whenConnected(() => {
+				console.log('Connected to signaling server via WebSocket');
+				isConnected = true;
+				connectionState = 'open';
+				roomPeers = wsClient!.getRoomPeers();
+			});
+		} else {
+			if (!roomName.trim()) {
+				console.warn('Room name is required for REST connections');
+				return;
+			}
+			restClient = new RestSignalingClient(serverUrl);
+			setupPeerMessageHandler(restClient);
+			try {
+				const data = await restClient.connect({ room: roomName });
+				console.log('Connected to signaling server via REST, room:', data.room);
+				isConnected = true;
+				connectionState = 'connected';
+				roomPeers = restClient.getRoomPeers();
+			} catch (e) {
+				console.error('Failed to connect via REST:', e);
+				connectionState = 'disconnected';
+			}
+		}
+	};
+
+	const disconnect = async () => {
 		console.log('Disconnecting...');
-		client.disconnect();
+		if (protocol === 'ws' && wsClient) {
+			wsClient.disconnect();
+		} else if (protocol === 'rest' && restClient) {
+			await restClient.disconnect();
+		}
 		isConnected = false;
 		connectionState = 'disconnected';
+		roomPeers = [];
 	};
 
 	const forceReconnect = () => {
-		console.log('Force reconnecting...');
-		client.forceReconnect();
+		if (protocol === 'ws' && wsClient) {
+			console.log('Force reconnecting...');
+			wsClient.forceReconnect();
+		}
+	};
+
+	const joinRoom = () => {
+		if (protocol === 'ws' && wsClient && roomName.trim()) {
+			wsClient.joinRoom(roomName);
+		}
+	};
+
+	const leaveRoom = () => {
+		if (protocol === 'ws' && wsClient) {
+			wsClient.leaveRoom();
+			roomPeers = [];
+		}
 	};
 
 	const toggleAutoReconnect = () => {
 		autoReconnect = !autoReconnect;
-		if (autoReconnect) {
-			client.enableAutoReconnect();
-		} else {
-			client.disableAutoReconnect();
+		if (wsClient) {
+			if (autoReconnect) {
+				wsClient.enableAutoReconnect();
+			} else {
+				wsClient.disableAutoReconnect();
+			}
 		}
 	};
 
 	const updateReconnectInterval = () => {
-		if (reconnectInterval > 0) {
-			client.setReconnectInterval(reconnectInterval);
+		if (reconnectInterval > 0 && wsClient) {
+			wsClient.setReconnectInterval(reconnectInterval);
 		}
 	};
 
 	const sendMessage = () => {
 		if (!inputMessage.trim() || !isConnected) return;
 
-		// Create outbound message
 		const outboundMsg: P2PMessage = {
-			id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+			id:
+				typeof crypto !== 'undefined' && crypto.randomUUID
+					? crypto.randomUUID()
+					: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
 			timestamp: Date.now(),
 			direction: 'outbound',
 			type: 'text',
@@ -81,14 +156,12 @@
 			namespace: null
 		};
 
-		// Add to messages store
 		messages.update((msgs) => [...msgs, outboundMsg]);
 
-		// NOTE: Actual P2P transmission requires P2PConnection integration
-		// This would be: connection.send(serializeP2PMessage(outboundMsg))
-		// For now, this demonstrates the message structure and UI
-		console.log('Message prepared for sending:', inputMessage);
-		console.warn('P2PConnection.send() integration pending - message stored locally only');
+		const client = protocol === 'ws' ? wsClient : restClient;
+		if (client) {
+			client.sendMessage(serializeP2PMessage(outboundMsg));
+		}
 
 		inputMessage = '';
 	};
@@ -101,65 +174,117 @@
 
 <main>
 	<h1>P2P Console Viewer</h1>
-	
+
 	<div class="connection-panel">
+		<div class="protocol-switcher">
+			<span class="status-label">Protocol:</span>
+			<button
+				class="protocol-btn"
+				class:active={protocol === 'ws'}
+				onclick={() => switchProtocol('ws')}
+				disabled={isConnected}
+			>
+				WebSocket
+			</button>
+			<button
+				class="protocol-btn"
+				class:active={protocol === 'rest'}
+				onclick={() => switchProtocol('rest')}
+				disabled={isConnected}
+			>
+				REST
+			</button>
+		</div>
+
+		<div class="settings-grid" style="margin-bottom: 12px;">
+			<div class="setting">
+				<label>
+					Server URL:
+					<input
+						type="text"
+						bind:value={serverUrl}
+						placeholder={protocol === 'ws' ? 'ws://localhost:3000' : 'http://localhost:3000'}
+						disabled={isConnected}
+					/>
+				</label>
+			</div>
+			<div class="setting">
+				<label>
+					Room:
+					<input
+						type="text"
+						bind:value={roomName}
+						placeholder="Enter room name"
+						disabled={isConnected}
+					/>
+				</label>
+			</div>
+		</div>
+
 		<div class="connection-status">
 			<span class="status-label">Status:</span>
 			<span class="status-badge {connectionState}">{connectionState}</span>
 		</div>
-		
+
 		<div class="controls">
-			<button on:click={connect} disabled={isConnected}>
-				Connect
-			</button>
-			<button on:click={disconnect} disabled={!isConnected}>
-				Disconnect
-			</button>
-			<button on:click={forceReconnect}>
-				Force Reconnect
-			</button>
+			<button onclick={connect} disabled={isConnected}> Connect </button>
+			<button onclick={disconnect} disabled={!isConnected}> Disconnect </button>
+			{#if protocol === 'ws'}
+				<button onclick={forceReconnect} disabled={!isConnected}> Force Reconnect </button>
+				<button onclick={joinRoom} disabled={!isConnected || !roomName.trim()}> Join Room </button>
+				<button onclick={leaveRoom} disabled={!isConnected}> Leave Room </button>
+			{/if}
 		</div>
 
-		<div class="advanced-controls">
-			<details>
-				<summary>Advanced Connection Settings</summary>
-				<div class="settings-grid">
-					<div class="setting">
-						<label>
-							<input
-								type="checkbox"
-								checked={autoReconnect}
-								on:change={toggleAutoReconnect}
-							/>
-							Auto-reconnect
-						</label>
+		{#if roomPeers.length > 0}
+			<div class="room-peers">
+				<span class="status-label">Room Peers ({roomPeers.length}):</span>
+				<ul>
+					{#each roomPeers as peer}
+						<li>{peer}</li>
+					{/each}
+				</ul>
+			</div>
+		{/if}
+
+		{#if protocol === 'ws'}
+			<div class="advanced-controls">
+				<details>
+					<summary>Advanced Connection Settings</summary>
+					<div class="settings-grid">
+						<div class="setting">
+							<label>
+								<input type="checkbox" checked={autoReconnect} onchange={toggleAutoReconnect} />
+								Auto-reconnect
+							</label>
+						</div>
+						<div class="setting">
+							<label>
+								Reconnect interval (ms):
+								<input
+									type="number"
+									bind:value={reconnectInterval}
+									onchange={updateReconnectInterval}
+									min="100"
+									step="100"
+								/>
+							</label>
+						</div>
 					</div>
-					<div class="setting">
-						<label>
-							Reconnect interval (ms):
-							<input
-								type="number"
-								bind:value={reconnectInterval}
-								on:change={updateReconnectInterval}
-								min="100"
-								step="100"
-							/>
-						</label>
-					</div>
-				</div>
-			</details>
-		</div>
+				</details>
+			</div>
+		{/if}
 	</div>
-	
+
 	<div class="message-input">
 		<input
 			type="text"
 			bind:value={inputMessage}
-			on:keypress={(e) => e.key === 'Enter' && sendMessage()}
+			onkeypress={(e) => e.key === 'Enter' && sendMessage()}
 			placeholder="Type a message..."
 			disabled={!isConnected}
 		/>
-		<button on:click={sendMessage} disabled={!isConnected}>Send</button>
+		<button onclick={sendMessage} disabled={!isConnected}>Send</button>
 	</div>
 
 	<section class="messages">
@@ -190,7 +315,8 @@
 <style>
 	main {
 		padding: 20px;
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+		font-family:
+			-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 	}
 
 	.connection-panel {
@@ -199,6 +325,36 @@
 		border-radius: 8px;
 		padding: 16px;
 		margin-bottom: 20px;
+	}
+
+	.protocol-switcher {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-bottom: 12px;
+	}
+
+	.protocol-btn {
+		padding: 6px 16px;
+		font-size: 13px;
+		font-weight: 600;
+		border: 2px solid #dee2e6;
+		border-radius: 6px;
+		background: white;
+		color: #495057;
+		cursor: pointer;
+		transition: all 0.2s;
+	}
+
+	.protocol-btn.active {
+		background: #0066cc;
+		color: white;
+		border-color: #0066cc;
+	}
+
+	.protocol-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 
 	.connection-status {
@@ -232,7 +388,8 @@
 		animation: pulse 1.5s infinite;
 	}
 
-	.status-badge.open {
+	.status-badge.open,
+	.status-badge.connected {
 		background: #d1e7dd;
 		color: #0f5132;
 	}
@@ -248,7 +405,8 @@
 	}
 
 	@keyframes pulse {
-		0%, 100% {
+		0%,
+		100% {
 			opacity: 1;
 		}
 		50% {
@@ -261,6 +419,31 @@
 		gap: 8px;
 		margin-bottom: 12px;
 		flex-wrap: wrap;
+	}
+
+	.room-peers {
+		margin-top: 12px;
+		padding: 8px;
+		background: white;
+		border: 1px solid #dee2e6;
+		border-radius: 4px;
+	}
+
+	.room-peers ul {
+		list-style: none;
+		padding: 0;
+		margin: 4px 0 0 0;
+		display: flex;
+		gap: 8px;
+		flex-wrap: wrap;
+	}
+
+	.room-peers li {
+		padding: 2px 8px;
+		background: #e9ecef;
+		border-radius: 4px;
+		font-size: 12px;
+		font-family: monospace;
 	}
 
 	.advanced-controls {
@@ -300,16 +483,24 @@
 		color: #495057;
 	}
 
-	.setting input[type="checkbox"] {
+	.setting input[type='checkbox'] {
 		cursor: pointer;
 	}
 
-	.setting input[type="number"] {
+	.setting input[type='number'] {
 		padding: 4px 8px;
 		border: 1px solid #ced4da;
 		border-radius: 4px;
 		font-size: 14px;
 		width: 100px;
+	}
+
+	.setting input[type='text'] {
+		padding: 4px 8px;
+		border: 1px solid #ced4da;
+		border-radius: 4px;
+		font-size: 14px;
+		width: 200px;
 	}
 
 	button {
