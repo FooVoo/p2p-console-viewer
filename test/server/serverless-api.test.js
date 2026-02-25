@@ -8,6 +8,7 @@ const { createLeaveHandler } = require('../../workplaces/p2p-console-viewer-serv
 const { createSignalHandler } = require('../../workplaces/p2p-console-viewer-server/api/signal.js');
 const { createPollHandler } = require('../../workplaces/p2p-console-viewer-server/api/poll.js');
 const { createStatusHandler } = require('../../workplaces/p2p-console-viewer-server/api/status.js');
+const { getCorsHeaders, withCors } = require('../../workplaces/p2p-console-viewer-server/lib/cors.js');
 
 // ── Test helpers ─────────────────────────────────────────────────────────────
 
@@ -376,5 +377,102 @@ describe('Error handling (try/catch in handlers)', () => {
 		const response = await handler(getRequest('/api/status'));
 		expect(response.status).toBe(500);
 		expect((await response.json()).error).toBe('internal-error');
+	});
+});
+
+// ── CORS ──────────────────────────────────────────────────────────────────────
+
+describe('getCorsHeaders', () => {
+	it('returns wildcard when allowedOrigins is empty', () => {
+		const req = new Request('http://localhost/api/status', {
+			headers: { Origin: 'http://example.com' }
+		});
+		const headers = getCorsHeaders(req, []);
+		expect(headers['Access-Control-Allow-Origin']).toBe('*');
+	});
+
+	it('reflects the origin when it is in the allowlist', () => {
+		const req = new Request('http://localhost/api/status', {
+			headers: { Origin: 'http://allowed.example.com' }
+		});
+		const headers = getCorsHeaders(req, ['http://allowed.example.com']);
+		expect(headers['Access-Control-Allow-Origin']).toBe('http://allowed.example.com');
+		expect(headers['Vary']).toBe('Origin');
+	});
+
+	it('returns no header when the origin is not in the allowlist', () => {
+		const req = new Request('http://localhost/api/status', {
+			headers: { Origin: 'http://other.com' }
+		});
+		const headers = getCorsHeaders(req, ['http://allowed.example.com']);
+		expect(headers['Access-Control-Allow-Origin']).toBeUndefined();
+	});
+});
+
+describe('CORS headers on API responses', () => {
+	it('join: adds Access-Control-Allow-Origin: * when allowedOrigins is empty', async () => {
+		const handler = createJoinHandler(rm, []);
+		const response = await handler(postRequest('/api/join', { room: 'cors-room' }));
+		expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+	});
+
+	it('join: reflects matching origin when allowedOrigins is set', async () => {
+		const origin = 'http://trusted.example.com';
+		const handler = createJoinHandler(rm, [origin]);
+		const req = new Request('http://localhost/api/join', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', Origin: origin },
+			body: JSON.stringify({ room: 'cors-room' })
+		});
+		const response = await handler(req);
+		expect(response.headers.get('Access-Control-Allow-Origin')).toBe(origin);
+	});
+
+	it('join: omits CORS header for disallowed origin', async () => {
+		const handler = createJoinHandler(rm, ['http://trusted.example.com']);
+		const req = new Request('http://localhost/api/join', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', Origin: 'http://evil.com' },
+			body: JSON.stringify({ room: 'cors-room' })
+		});
+		const response = await handler(req);
+		expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull();
+	});
+
+	it('join: OPTIONS preflight returns 204 with CORS headers', async () => {
+		const origin = 'http://trusted.example.com';
+		const handler = createJoinHandler(rm, [origin]);
+		const req = new Request('http://localhost/api/join', {
+			method: 'OPTIONS',
+			headers: { Origin: origin }
+		});
+		const response = await handler(req);
+		expect(response.status).toBe(204);
+		expect(response.headers.get('Access-Control-Allow-Origin')).toBe(origin);
+		expect(response.headers.get('Access-Control-Allow-Methods')).toContain('POST');
+	});
+
+	it('status: adds CORS headers', async () => {
+		const handler = createStatusHandler(rm, []);
+		const response = await handler(getRequest('/api/status'));
+		expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+	});
+
+	it('leave: adds CORS headers', async () => {
+		const handler = createLeaveHandler(rm, []);
+		const response = await handler(postRequest('/api/leave', { id: 'no-such-client' }));
+		expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+	});
+
+	it('signal: adds CORS headers', async () => {
+		const handler = createSignalHandler(rm, []);
+		const response = await handler(postRequest('/api/signal', { id: 'ghost', type: 'offer' }));
+		expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+	});
+
+	it('poll: adds CORS headers', async () => {
+		const handler = createPollHandler(rm, []);
+		const response = await handler(getRequest('/api/poll', { id: 'ghost' }));
+		expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
 	});
 });

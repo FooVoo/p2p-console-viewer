@@ -1,5 +1,6 @@
-import { CLIENT_TTL } from "../lib/guardrails.js";
+import { CLIENT_TTL, ALLOWED_ORIGINS } from "../lib/guardrails.js";
 import { roomManager } from "../lib/shared-state.js";
+import { withCors } from "../lib/cors.js";
 
 /**
  * Factory that returns a `GET /api/poll` handler backed by `roomManager`.
@@ -13,10 +14,11 @@ import { roomManager } from "../lib/shared-state.js";
  * Response:    `{ messages: object[] }`
  *
  * @param {import('../lib/room-manager').RoomManager} roomManager
+ * @param {string[]} [allowedOrigins]
  * @returns {(request: Request) => Promise<Response>}
  */
-export function createPollHandler(roomManager) {
-  return async (request) => {
+export function createPollHandler(roomManager, allowedOrigins = ALLOWED_ORIGINS) {
+  return withCors(async (request) => {
     try {
       if (request.method !== "GET") {
         return new Response(JSON.stringify({ error: "method-not-allowed" }), { status: 405 });
@@ -41,7 +43,7 @@ export function createPollHandler(roomManager) {
       console.error("poll handler error:", err);
       return new Response(JSON.stringify({ error: "internal-error" }), { status: 500 });
     }
-  };
+  }, allowedOrigins);
 }
 
 const _pollHandler = createPollHandler(roomManager);

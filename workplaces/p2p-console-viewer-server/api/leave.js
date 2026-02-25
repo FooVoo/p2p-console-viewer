@@ -1,4 +1,6 @@
 import { roomManager } from "../lib/shared-state.js";
+import { ALLOWED_ORIGINS } from "../lib/guardrails.js";
+import { withCors } from "../lib/cors.js";
 
 /**
  * Factory that returns a `POST /api/leave` handler backed by `roomManager`.
@@ -7,10 +9,11 @@ import { roomManager } from "../lib/shared-state.js";
  * Response:     `{ ok: true }`
  *
  * @param {import('../lib/room-manager').RoomManager} roomManager
+ * @param {string[]} [allowedOrigins]
  * @returns {(request: Request) => Promise<Response>}
  */
-export function createLeaveHandler(roomManager) {
-  return async (request) => {
+export function createLeaveHandler(roomManager, allowedOrigins = ALLOWED_ORIGINS) {
+  return withCors(async (request) => {
     try {
       if (request.method !== "POST") {
         return new Response(JSON.stringify({ error: "method-not-allowed" }), { status: 405 });
@@ -29,7 +32,7 @@ export function createLeaveHandler(roomManager) {
       console.error("leave handler error:", err);
       return new Response(JSON.stringify({ error: "internal-error" }), { status: 500 });
     }
-  };
+  }, allowedOrigins);
 }
 
 const _leaveHandler = createLeaveHandler(roomManager);
