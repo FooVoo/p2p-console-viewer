@@ -134,6 +134,39 @@ export class WebSocketConnector {
      */
     disconnect(preventReconnect?: boolean): void;
     /**
+     * Force an immediate reconnection.
+     * Closes the current connection (if any) and immediately attempts to reconnect.
+     * Useful for manual retry or recovering from error states.
+     *
+     * @returns {void}
+     */
+    forceReconnect(): void;
+    /**
+     * Get the current connection state.
+     *
+     * @returns {string} One of: 'connecting', 'open', 'closing', 'closed', 'disconnected'
+     */
+    getConnectionState(): string;
+    /**
+     * Set the reconnection interval.
+     *
+     * @param {number} intervalMs - Milliseconds to wait before reconnecting after close.
+     * @returns {void}
+     */
+    setReconnectInterval(intervalMs: number): void;
+    /**
+     * Enable automatic reconnection after connection closes.
+     *
+     * @returns {void}
+     */
+    enableAutoReconnect(): void;
+    /**
+     * Disable automatic reconnection after connection closes.
+     *
+     * @returns {void}
+     */
+    disableAutoReconnect(): void;
+    /**
      * Check whether the underlying WebSocket is currently open.
      *
      * @returns {boolean} True when connected and readyState is WebSocket.OPEN.
