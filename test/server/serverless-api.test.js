@@ -351,3 +351,52 @@ describe('GET /api/status', () => {
 		expect(r._body.rooms['lobby']).toHaveLength(2);
 	});
 });
+
+// ── Error handling ────────────────────────────────────────────────────────────
+
+describe('Error handling (try/catch in handlers)', () => {
+	it('join returns 500 when roomManager throws', () => {
+		const broken = { getClientCount: () => { throw new Error('boom'); } };
+		const handler = createJoinHandler(broken);
+		const r = res();
+		handler(req('POST', { body: { room: 'room' } }), r);
+		expect(r._status).toBe(500);
+		expect(r._body.error).toBe('internal-error');
+	});
+
+	it('leave returns 500 when roomManager throws', () => {
+		const broken = { removeClient: () => { throw new Error('boom'); } };
+		const handler = createLeaveHandler(broken);
+		const r = res();
+		handler(req('POST', { body: { id: 'x' } }), r);
+		expect(r._status).toBe(500);
+		expect(r._body.error).toBe('internal-error');
+	});
+
+	it('poll returns 500 when roomManager throws', () => {
+		const broken = { evictStale: () => { throw new Error('boom'); } };
+		const handler = createPollHandler(broken);
+		const r = res();
+		handler(req('GET', { query: { id: 'x' } }), r);
+		expect(r._status).toBe(500);
+		expect(r._body.error).toBe('internal-error');
+	});
+
+	it('signal returns 500 when roomManager throws', () => {
+		const broken = { getClient: () => { throw new Error('boom'); } };
+		const handler = createSignalHandler(broken);
+		const r = res();
+		handler(req('POST', { body: { id: 'x', type: 'offer' } }), r);
+		expect(r._status).toBe(500);
+		expect(r._body.error).toBe('internal-error');
+	});
+
+	it('status returns 500 when roomManager throws', () => {
+		const broken = { getStatus: () => { throw new Error('boom'); } };
+		const handler = createStatusHandler(broken);
+		const r = res();
+		handler(req('GET'), r);
+		expect(r._status).toBe(500);
+		expect(r._body.error).toBe('internal-error');
+	});
+});

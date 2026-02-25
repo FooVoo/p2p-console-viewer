@@ -10,13 +10,18 @@
  */
 function createStatusHandler(roomManager) {
   return (req, res) => {
-    if (req.method !== "GET") {
-      res.status(405).json({ error: "method-not-allowed" });
-      return;
-    }
+    try {
+      if (req.method !== "GET") {
+        res.status(405).json({ error: "method-not-allowed" });
+        return;
+      }
 
-    console.log("Status request from:", req.socket?.remoteAddress);
-    res.status(200).json(roomManager.getStatus());
+      console.log("Status request from:", req.socket?.remoteAddress);
+      res.status(200).json(roomManager.getStatus());
+    } catch (err) {
+      console.error("status handler error:", err);
+      res.status(500).json({ error: "internal-error" });
+    }
   };
 }
 
