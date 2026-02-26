@@ -1,6 +1,8 @@
 # Replacing In-Memory State with Vercel KV
 
-The signaling server's REST API (`workplaces/p2p-console-viewer-server/api/`) runs as Vercel serverless functions. Each function invocation is an isolated process, so the default in-memory `RoomManager` in `lib/shared-state.js` does **not** share state across requests.
+The signaling server's REST API (`workplaces/p2p-console-viewer-server/api/`) runs as Vercel serverless functions. Each
+function invocation is an isolated process, so the default in-memory `RoomManager` in `lib/shared-state.mjs` does **not
+** share state across requests.
 
 This guide explains how to create a Vercel KV store and adapt the server to use it for persistent, shared state.
 
@@ -41,7 +43,8 @@ npm install @vercel/kv
 
 ## 3. Create a KV-Backed RoomManager
 
-Create a new file `lib/kv-room-manager.js` that implements the same interface as the existing in-memory `RoomManager` but reads and writes state through Vercel KV.
+Create a new file `lib/kv-room-manager.mjs` that implements the same interface as the existing in-memory `RoomManager`
+but reads and writes state through Vercel KV.
 
 Below is a reference implementation. Adapt it to match your production needs (error handling, TTLs, etc.).
 
@@ -283,12 +286,12 @@ module.exports = { KvRoomManager };
 
 ## 4. Swap the Shared State Module
 
-Edit `lib/shared-state.js` to use the new KV-backed manager:
+Edit `lib/shared-state.mjs` to use the new KV-backed manager:
 
 ```js
 "use strict";
 
-const { KvRoomManager } = require("./kv-room-manager.js");
+const { KvRoomManager } = require("./kv-room-manager.mjs");
 
 /**
  * Shared RoomManager instance used by all serverless API handlers.
@@ -299,7 +302,9 @@ const roomManager = new KvRoomManager();
 module.exports = { roomManager };
 ```
 
-Because `KvRoomManager` exposes the same method signatures as the original `RoomManager`, the API handlers (`api/join.js`, `api/leave.js`, `api/poll.js`, `api/signal.js`, `api/status.js`) require no changes — you only need to `await` the calls that are now asynchronous.
+Because `KvRoomManager` exposes the same method signatures as the original `RoomManager`, the API handlers (
+`api/join.mjs`, `api/leave.mjs`, `api/poll.mjs`, `api/signal.mjs`, `api/status.mjs`) require no changes — you only need
+to `await` the calls that are now asynchronous.
 
 > **Note:** The existing API handlers already `await` the `RoomManager` methods, so no additional changes should be needed in most cases. If you wrote custom code that calls `RoomManager` methods synchronously, update those call sites to use `await`.
 

@@ -1,4 +1,4 @@
-import { RoomManager } from "./room-manager.js";
+import { RoomManager } from './room-manager.mjs';
 
 /**
  * Shared RoomManager instance used by all serverless API handlers.

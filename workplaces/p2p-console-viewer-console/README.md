@@ -4,7 +4,9 @@ A SvelteKit-based web console application for viewing remote console logs via pe
 
 ## Overview
 
-`p2p-console-viewer-console` is a modern web application built with Svelte 5 and SvelteKit that provides a user interface for viewing console output from remote applications connected via P2P.  It uses the `p2p-console-viewer-lib` library for establishing WebRTC connections.
+`p2p-console-viewer-console` is a modern web application built with Svelte 5 and SvelteKit that provides a user
+interface for viewing console output from remote applications connected via P2P. It uses the `p2p-console-viewer-lib`
+library for establishing WebRTC connections.
 
 ## Version
 
@@ -104,11 +106,13 @@ workplaces/p2p-console-viewer-console/
 ### Getting Started
 
 1. Install dependencies:
+
    ```bash
    npm install
    ```
 
 2. Start the development server:
+
    ```bash
    npm run dev
    ```
@@ -122,7 +126,7 @@ The project uses several tools to maintain code quality:
 - **ESLint**: JavaScript/TypeScript linting with Svelte support
 - **Prettier**: Code formatting with Svelte and Tailwind plugins
 - **TypeScript**: Type checking with strict mode enabled
-- **svelte-check**:  Svelte-specific type checking
+- **svelte-check**: Svelte-specific type checking
 
 Run checks before committing:
 
@@ -134,15 +138,18 @@ npm run check
 ## Dependencies
 
 ### Core
+
 - `p2p-console-viewer-lib@0.0.6` - Local P2P connection library
 - `@sveltejs/kit@^2.47.1` - SvelteKit framework
 - `svelte@^5.41.0` - Svelte 5 reactive framework
 
 ### Styling
+
 - `tailwindcss@^4.1.14` - Utility-first CSS framework
 - `@tailwindcss/vite@^4.1.14` - Vite plugin for Tailwind
 
 ### Development Tools
+
 - `vite` - Build tool and dev server
 - `typescript@^5.9.3` - TypeScript compiler
 - `eslint@^9.38.0` - Linting
@@ -163,13 +170,17 @@ For other deployment targets, you may need to install a different [adapter](http
 ## Configuration
 
 ### Tailwind CSS
+
 Tailwind is configured via `@tailwindcss/vite` plugin in `vite.config.ts`. Custom configuration can be added as needed.
 
 ### TypeScript
+
 TypeScript configuration is in `tsconfig.json` with strict type checking enabled.
 
 ### ESLint
+
 ESLint is configured with:
+
 - Svelte-specific rules
 - TypeScript support
 - Prettier compatibility

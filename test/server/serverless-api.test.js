@@ -2,13 +2,13 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
-const { RoomManager } = require('../../workplaces/p2p-console-viewer-server/lib/room-manager.js');
-const { createJoinHandler } = require('../../workplaces/p2p-console-viewer-server/api/join.js');
-const { createLeaveHandler } = require('../../workplaces/p2p-console-viewer-server/api/leave.js');
-const { createSignalHandler } = require('../../workplaces/p2p-console-viewer-server/api/signal.js');
-const { createPollHandler } = require('../../workplaces/p2p-console-viewer-server/api/poll.js');
-const { createStatusHandler } = require('../../workplaces/p2p-console-viewer-server/api/status.js');
-const { getCorsHeaders, withCors } = require('../../workplaces/p2p-console-viewer-server/lib/cors.js');
+const { RoomManager } = require('p2p-console-viewer-server/lib/room-manager.mjs');
+const { createJoinHandler } = require('p2p-console-viewer-server/api/join.mjs');
+const { createLeaveHandler } = require('p2p-console-viewer-server/api/leave.mjs');
+const { createSignalHandler } = require('p2p-console-viewer-server/api/signal.mjs');
+const { createPollHandler } = require('p2p-console-viewer-server/api/poll.mjs');
+const { createStatusHandler } = require('p2p-console-viewer-server/api/status.mjs');
+const { getCorsHeaders, withCors } = require('p2p-console-viewer-server/lib/cors.mjs');
 
 // ── Test helpers ─────────────────────────────────────────────────────────────
 
@@ -26,7 +26,9 @@ function postRequest(path, body = {}) {
 /** Build a Web API Request for GET endpoints (query params in URL) */
 function getRequest(path, query = {}) {
 	const url = new URL(path, BASE_URL);
-	for (const [k, v] of Object.entries(query)) url.searchParams.set(k, v);
+	for (const [k, v] of Object.entries(query)) {
+		url.searchParams.set(k, v);
+	}
 	return new Request(url.toString(), { method: 'GET' });
 }
 

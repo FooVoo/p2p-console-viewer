@@ -5,7 +5,7 @@
  * @returns {boolean}
  */
 export function isValidRoomName(name) {
-  return typeof name === "string" && /^[A-Za-z0-9\-_]{1,64}$/.test(name);
+	return typeof name === 'string' && /^[A-Za-z0-9\-_]{1,64}$/.test(name);
 }
 
 /**
@@ -18,13 +18,13 @@ export function isValidRoomName(name) {
  * @returns {boolean}
  */
 export function rateAllow(rate, burst, ratePerSec) {
-  const now = Date.now();
-  const elapsed = Math.max(0, (now - rate.last) / 1000);
-  rate.tokens = Math.min(burst, rate.tokens + elapsed * ratePerSec);
-  rate.last = now;
-  if (rate.tokens >= 1) {
-    rate.tokens -= 1;
-    return true;
-  }
-  return false;
+	const now = Date.now();
+	const elapsed = Math.max(0, (now - rate.last) / 1000);
+	rate.tokens = Math.min(burst, rate.tokens + elapsed * ratePerSec);
+	rate.last = now;
+	if (rate.tokens >= 1) {
+		rate.tokens -= 1;
+		return true;
+	}
+	return false;
 }

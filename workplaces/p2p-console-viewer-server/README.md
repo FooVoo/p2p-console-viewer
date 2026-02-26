@@ -30,6 +30,7 @@ npm run test:coverage # Generate coverage report
 ```
 
 **Test Coverage**: 49 tests covering:
+
 - Room management (18 tests): Create, join, leave, cleanup
 - Message routing: Same room vs. different rooms
 - Protocol messages: ID assignment, room events, peer notifications
@@ -63,14 +64,15 @@ curl http://localhost:3000/status
 ```
 
 Response:
+
 ```json
 {
-  "totalClients": 2,
-  "clients": ["uuid-1", "uuid-2"],
-  "rooms": {
-    "room-1": ["uuid-1"],
-    "room-2": ["uuid-2"]
-  }
+	"totalClients": 2,
+	"clients": ["uuid-1", "uuid-2"],
+	"rooms": {
+		"room-1": ["uuid-1"],
+		"room-2": ["uuid-2"]
+	}
 }
 ```
 
@@ -79,6 +81,7 @@ Response:
 ### Client → Server Messages
 
 #### Join Room
+
 ```json
 {
   "type": "join-room",
@@ -87,6 +90,7 @@ Response:
 ```
 
 #### Leave Room
+
 ```json
 {
   "type": "leave-room"
@@ -94,6 +98,7 @@ Response:
 ```
 
 #### WebRTC Signaling (within a room)
+
 ```json
 {
   "type": "offer|answer|ice-candidate",
@@ -105,54 +110,61 @@ Response:
 ### Server → Client Messages
 
 #### Client ID Assignment
+
 ```json
 {
-  "type": "id",
-  "id": "client-uuid"
+	"type": "id",
+	"id": "client-uuid"
 }
 ```
 
 #### Room Joined Confirmation
+
 ```json
 {
-  "type": "room-joined",
-  "room": "room-name"
+	"type": "room-joined",
+	"room": "room-name"
 }
 ```
 
 #### Room Left Confirmation
+
 ```json
 {
-  "type": "room-left",
-  "room": "room-name"
+	"type": "room-left",
+	"room": "room-name"
 }
 ```
 
 #### Existing Peers in Room
+
 ```json
 {
-  "type": "room-peers",
-  "peers": ["peer-id-1", "peer-id-2"]
+	"type": "room-peers",
+	"peers": ["peer-id-1", "peer-id-2"]
 }
 ```
 
 #### Peer Joined Room
+
 ```json
 {
-  "type": "peer-joined",
-  "peerId": "new-peer-id"
+	"type": "peer-joined",
+	"peerId": "new-peer-id"
 }
 ```
 
 #### Peer Left Room
+
 ```json
 {
-  "type": "peer-left",
-  "peerId": "departed-peer-id"
+	"type": "peer-left",
+	"peerId": "departed-peer-id"
 }
 ```
 
 #### WebRTC Signaling Messages
+
 ```json
 {
   "type": "offer|answer|ice-candidate",
@@ -162,11 +174,12 @@ Response:
 ```
 
 #### Error Messages
+
 ```json
 {
-  "type": "error",
-  "message": "target-unavailable-or-different-room",
-  "to": "target-peer-id"
+	"type": "error",
+	"message": "target-unavailable-or-different-room",
+	"to": "target-peer-id"
 }
 ```
 
@@ -188,16 +201,16 @@ import { P2PSignalingClient } from 'p2p-console-viewer-lib';
 
 // Connect and join a room
 const client = new P2PSignalingClient('ws://localhost:3000', {
-  room: 'my-room'
+    room: 'my-room'
 });
 
 // Set up error handlers
 client.onError((error) => {
-  console.error('Client error:', error.message);
+    console.error('Client error:', error.message);
 });
 
 client.onPeerError((peerId, error) => {
-  console.error(`Error with peer ${peerId}:`, error.message);
+    console.error(`Error with peer ${peerId}:`, error.message);
 });
 
 client.connect();
@@ -206,7 +219,7 @@ client.connect();
 const client2 = new P2PSignalingClient('ws://localhost:3000');
 client2.connect();
 client2.whenConnected(() => {
-  client2.joinRoom('my-room');
+    client2.joinRoom('my-room');
 });
 ```
 
@@ -216,22 +229,24 @@ client2.whenConnected(() => {
 const ws = new WebSocket('ws://localhost:3000');
 
 ws.onopen = () => {
-  // Join a room
-  ws.send(JSON.stringify({
-    type: 'join-room',
-    room: 'my-room'
-  }));
+    // Join a room
+    ws.send(
+        JSON.stringify({
+            type: 'join-room',
+            room: 'my-room'
+        })
+    );
 };
 
 ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  console.log('Received:', data);
-  
-  if (data.type === 'room-joined') {
-    console.log('Joined room:', data.room);
-  } else if (data.type === 'room-peers') {
-    console.log('Peers in room:', data.peers);
-  }
+    const data = JSON.parse(event.data);
+    console.log('Received:', data);
+
+    if (data.type === 'room-joined') {
+        console.log('Joined room:', data.room);
+    } else if (data.type === 'room-peers') {
+        console.log('Peers in room:', data.peers);
+    }
 };
 ```
 

@@ -19,7 +19,7 @@ function generateMessageId(): string {
 export function parseP2PMessage(data: string, direction: 'inbound' | 'outbound'): P2PMessage {
 	try {
 		const parsed = JSON.parse(data);
-		
+
 		// Check if it's a structured console message (from P2pMessageHelper)
 		if (parsed && typeof parsed === 'object' && 'level' in parsed && 'timestamp' in parsed) {
 			return {
@@ -32,7 +32,7 @@ export function parseP2PMessage(data: string, direction: 'inbound' | 'outbound')
 				namespace: parsed.namespace
 			};
 		}
-		
+
 		// If it's JSON but not a console message, stringify it
 		return {
 			id: generateMessageId(),

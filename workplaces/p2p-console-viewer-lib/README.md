@@ -4,7 +4,9 @@ A JavaScript library for establishing peer-to-peer connections and viewing conso
 
 ## Overview
 
-`p2p-console-viewer-lib` provides a set of utilities to create P2P connections between peers using WebRTC, with WebSocket-based signaling for connection establishment.  It includes console patching capabilities to intercept and transmit console output over the P2P connection.
+`p2p-console-viewer-lib` provides a set of utilities to create P2P connections between peers using WebRTC, with
+WebSocket-based signaling for connection establishment. It includes console patching capabilities to intercept and
+transmit console output over the P2P connection.
 
 ## Version
 
@@ -78,22 +80,22 @@ client.whenConnected(() => {
 import { P2PSignalingClient } from 'p2p-console-viewer-lib';
 
 const client = new P2PSignalingClient('ws://localhost:3000', {
-  room: 'collaboration-room'
+	room: 'collaboration-room'
 });
 
 client.connect();
 
 client.whenConnected(() => {
-  // Get list of peers in the room
-  const peers = client.getRoomPeers();
-  
-  if (peers.length > 0) {
-    // Initiate P2P connection with first peer
-    const remotePeerId = peers[0];
-    client.initiateP2P(remotePeerId).then(() => {
-      console.log('P2P connection initiated with', remotePeerId);
-    });
-  }
+	// Get list of peers in the room
+	const peers = client.getRoomPeers();
+
+	if (peers.length > 0) {
+		// Initiate P2P connection with first peer
+		const remotePeerId = peers[0];
+		client.initiateP2P(remotePeerId).then(() => {
+			console.log('P2P connection initiated with', remotePeerId);
+		});
+	}
 });
 ```
 
@@ -108,7 +110,7 @@ client.connect();
 client.whenConnected(() => {
   // Join first room
   client.joinRoom('room-1');
-  
+
   // Later, switch to another room
   setTimeout(() => {
     client.leaveRoom();
@@ -126,27 +128,27 @@ import { ConsoleP2PClient } from 'p2p-console-viewer-lib';
 
 // Sender: forward console output to remote peers
 const sender = new ConsoleP2PClient('ws://localhost:3000', {
-  room: 'debug-room',
-  namespace: 'my-service'
+	room: 'debug-room',
+	namespace: 'my-service'
 });
 sender.connect();
-sender.start();  // patches the global console
+sender.start(); // patches the global console
 
 console.log('This is forwarded to all peers in "debug-room"');
 
-sender.stop();       // restore original console
+sender.stop(); // restore original console
 sender.disconnect();
 ```
 
 ```javascript
 // Viewer: receive and display remote console output
 const viewer = new ConsoleP2PClient('ws://localhost:3000', {
-  room: 'debug-room'
+	room: 'debug-room'
 });
 
 viewer.onConsoleMessage((peerId, msg) => {
-  // msg: { id, level, namespace, timestamp, payload, text }
-  console.log(`[${msg.level}] from ${peerId}:`, msg.text);
+	// msg: { id, level, namespace, timestamp, payload, text }
+	console.log(`[${msg.level}] from ${peerId}:`, msg.text);
 });
 
 viewer.connect();
@@ -200,6 +202,7 @@ npm run test:coverage # Generate coverage report
 ```
 
 **Test Coverage**: 201 tests covering:
+
 - WebSocketConnector (46 tests): Connection lifecycle, message handling, edge cases
 - P2PSignalingClient (61 tests): Room management, signaling, error handling, edge cases
 - P2PConnection (36 tests): WebRTC lifecycle, data channels
@@ -241,78 +244,100 @@ Main client for WebRTC signaling with room support.
 #### Constructor
 
 ```javascript
-new P2PSignalingClient(signalingServerUrl, options)
+new P2PSignalingClient(signalingServerUrl, options);
 ```
 
 **Parameters:**
+
 - `signalingServerUrl` (string): WebSocket URL of the signaling server
 - `options` (object, optional):
   - `room` (string): Room name to join on connection
 
 **Example:**
+
 ```javascript
 const client = new P2PSignalingClient('ws://localhost:3000', {
-  room: 'my-room'
+	room: 'my-room'
 });
 ```
 
 #### Methods
 
 ##### `connect()`
+
 Opens the WebSocket connection to the signaling server.
 
 ##### `joinRoom(roomName)`
+
 Join a specific room on the signaling server.
+
 - `roomName` (string): Name of the room to join (validated: must be non-empty string)
 - Returns: `boolean` - True if request sent successfully, false on validation failure
 
 ##### `leaveRoom()`
+
 Leave the current room.
+
 - Returns: `boolean` - True if request sent successfully, false if not in a room
 
 ##### `getRoomPeers()`
+
 Get the list of peer IDs in the current room.
+
 - Returns: `Array<string>` - Array of peer IDs
 
 ##### `initiateP2P(remotePeerId)`
+
 Initiate a P2P connection to a specific remote peer.
+
 - `remotePeerId` (string): ID of the peer to connect to (validated: must be non-empty string)
 - Returns: `Promise<Object>` - Resolves with the SDP offer, rejects on error
 
 ##### `sendMessage(remotePeerId, message)`
+
 Send a message over the P2P data channel.
+
 - `remotePeerId` (string): Target peer ID
 - `message` (string|Object): Message to send
 - Returns: `boolean` - True if sent successfully
 
 ##### `disconnect()`
+
 Close all P2P connections and the signaling WebSocket.
 
 ##### `whenConnected(callback)`
+
 Register a callback to be executed when the signaling WebSocket is ready.
+
 - `callback` (Function): Called when connected (errors in callback are caught and emitted)
 
 ##### `onError(handler)`
+
 Register a handler for general errors (WebSocket, server, validation errors).
+
 - `handler` (Function): Called with error object: `(error) => { ... }`
 
 **Example:**
+
 ```javascript
 client.onError((error) => {
-  console.error('Client error:', error.message);
-  // Handle WebSocket errors, server errors, validation errors
+	console.error('Client error:', error.message);
+	// Handle WebSocket errors, server errors, validation errors
 });
 ```
 
 ##### `onPeerError(handler)`
+
 Register a handler for peer-specific connection errors.
+
 - `handler` (Function): Called with peer ID and error: `(peerId, error) => { ... }`
 
 **Example:**
+
 ```javascript
 client.onPeerError((peerId, error) => {
-  console.error(`Error with peer ${peerId}:`, error.message);
-  // Handle WebRTC connection failures, signaling errors for specific peers
+	console.error(`Error with peer ${peerId}:`, error.message);
+	// Handle WebRTC connection failures, signaling errors for specific peers
 });
 ```
 
@@ -323,24 +348,33 @@ Handles WebRTC peer connections and data channels.
 #### Methods
 
 ##### `initiate()`
+
 Initialize as the connection initiator (creates offer).
+
 - Returns: `Promise<RTCSessionDescriptionInit>` - The created SDP offer
 
 ##### `receiveOffer(offer)`
+
 Initialize as the connection receiver (receives offer, creates answer).
+
 - `offer` (RTCSessionDescriptionInit): Remote SDP offer
 - Returns: `Promise<RTCSessionDescriptionInit>` - The created SDP answer
 
 ##### `send(message)`
+
 Send a message through the data channel.
+
 - `message` (string|Object): Message to send
 - Returns: `boolean` - True if sent successfully
 
 ##### `close()`
+
 Close the connection and cleanup resources.
 
 ##### `isConnected()`
+
 Check if connection is established and data channel is open.
+
 - Returns: `boolean`
 
 ### WebSocketConnector
@@ -350,23 +384,32 @@ Lightweight wrapper around the browser WebSocket API.
 #### Methods
 
 ##### `connect()`
+
 Open the WebSocket connection.
 
 ##### `send(message)`
+
 Send a message over the WebSocket.
+
 - `message` (string|Object): Message to send
 - Returns: `boolean` - True if sent successfully
 
 ##### `disconnect(preventReconnect)`
+
 Close the WebSocket connection.
+
 - `preventReconnect` (boolean): If true, stops automatic reconnection
 
 ##### `onMessage(handler)`
+
 Register a handler for incoming messages.
+
 - `handler` (Function): Called with message data
 
 ##### `whenReady(callback)`
+
 Run a callback when the WebSocket is open and ready.
+
 - `callback` (Function): Called when ready
 
 ## Architecture

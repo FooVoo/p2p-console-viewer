@@ -33,6 +33,7 @@ Messages created by `P2pMessageHelper` from the library include:
 - **debug**: Debug information (purple)
 
 These messages preserve:
+
 - Original console method type
 - Full payload data
 - Namespace (if provided)
@@ -63,10 +64,12 @@ Simple string messages without structure are treated as type `'text'`.
 ## Visual Indicators
 
 ### By Direction
+
 - **Inbound**: Blue-tinted background, blue left border
 - **Outbound**: Green-tinted background, green left border
 
 ### By Type
+
 - **log**: Gray badge
 - **info**: Blue badge
 - **warn**: Yellow background, yellow left border
@@ -86,8 +89,8 @@ import { messages } from '$lib/stores/messages.store';
 const client = new P2PSignalingClient('ws://localhost:3000');
 
 client.onMessage((data) => {
-  const message = parseP2PMessage(data, 'inbound');
-  messages.update((msgs) => [...msgs, message]);
+	const message = parseP2PMessage(data, 'inbound');
+	messages.update((msgs) => [...msgs, message]);
 });
 ```
 
@@ -95,11 +98,11 @@ client.onMessage((data) => {
 
 ```javascript
 const msg = {
-  id: `${Date.now()}-${Math.random()}`,
-  timestamp: Date.now(),
-  direction: 'outbound',
-  type: 'log',
-  content: 'Hello from viewer!',
+	id: `${Date.now()}-${Math.random()}`,
+	timestamp: Date.now(),
+	direction: 'outbound',
+	type: 'log',
+	content: 'Hello from viewer!'
 };
 
 // Add to store
@@ -135,6 +138,7 @@ connection.send(P2pMessageHelper.serialize(message));
 ### Payload Inspection
 
 Structured messages with payloads show a collapsible details section:
+
 - Shows number of payload items
 - Expandable JSON view of full payload
 - Syntax-highlighted display
@@ -142,6 +146,7 @@ Structured messages with payloads show a collapsible details section:
 ### Namespace Filtering
 
 Messages with namespaces display the namespace in the header, enabling:
+
 - Visual grouping
 - Future filtering by namespace
 - Multi-application debugging
@@ -149,6 +154,7 @@ Messages with namespaces display the namespace in the header, enabling:
 ### Timestamp Display
 
 All messages show human-readable timestamps:
+
 - Format: `HH:MM:SS AM/PM`
 - Hover for full date (future enhancement)
 - Chronological ordering preserved

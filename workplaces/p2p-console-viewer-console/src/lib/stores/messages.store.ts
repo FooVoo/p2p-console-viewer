@@ -1,4 +1,10 @@
-import  { type Subscriber, type Unsubscriber, type Updater, writable, type Writable } from 'svelte/store';
+import {
+	type Subscriber,
+	type Unsubscriber,
+	type Updater,
+	writable,
+	type Writable
+} from 'svelte/store';
 
 /**
  * Message type for P2P console messages
